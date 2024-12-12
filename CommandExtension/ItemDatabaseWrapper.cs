@@ -60,5 +60,71 @@ namespace CommandExtension
             public ItemDatabaseWrapper()
             {
             }
+
+        public class ItemDatabase : MonoBehaviour
+        {
+            public static Dictionary<int, ItemData> itemDatas;
+            public static Dictionary<string, int> ids = new Dictionary<string, int>();
+            public static bool constructed;
+
+            public static void ConstructDatabase(ItemData[] itemArray)
+            {
+                if (ItemDatabase.constructed)
+                    return;
+                ItemDatabase.itemDatas = new Dictionary<int, ItemData>();
+                for (int index = 0; index < itemArray.Length; ++index)
+                {
+                    ItemDatabase.itemDatas[itemArray[index].id] = itemArray[index];
+                    string lower = itemArray[index].name.RemoveWhitespace().ToLower();
+                    ItemDatabase.ids.Add(lower, itemArray[index].id);
+                    itemArray[index].Awake();
+                }
+                Debug.Log((object)ItemDatabase.ids.Count);
+                ItemDatabase.constructed = true;
+            }
+
+            public static void ConstructDatabase()
+            {
+                int num = ItemDatabase.constructed ? 1 : 0;
+            }
+
+            public static void DebugItemList()
+            {
+                foreach (KeyValuePair<string, int> id in ItemDatabase.ids)
+                    Debug.Log((object)(id.Value.ToString() + " - " + id.Key));
+            }
+
+            public static int GetID(string tileName)
+            {
+                int num;
+                return ItemDatabase.ids.TryGetValue(tileName.RemoveWhitespace().ToLower(), out num) ? num : -1;
+            }
+
+            public static T GetItemData<T>(int id) where T : ItemData
+            {
+                if (!ItemDatabase.itemDatas.ContainsKey(id))
+                    return default(T);
+                return ItemDatabase.itemDatas[id] is T ? (T)ItemDatabase.itemDatas[id] : default(T);
+            }
+
+            public static T GetItemData<T>(Item item) where T : ItemData
+            {
+                return ItemDatabase.GetItemData<T>(item.ID());
+            }
+
+            public static ItemData GetItemData(int id)
+            {
+                ItemData itemData;
+                return !ItemDatabase.itemDatas.TryGetValue(id, out itemData) ? (ItemData)null : itemData;
+            }
+
+            public static ItemData GetItemData(Item item)
+            {
+                ItemData itemData;
+                return !ItemDatabase.itemDatas.TryGetValue(item.ID(), out itemData) ? (ItemData)null : itemData;
+            }
+
+            public static bool ValidID(int id) => (UnityEngine.Object)ItemDatabase.GetItemData(id) != (UnityEngine.Object)null;
         }
+    }
 }
