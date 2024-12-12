@@ -95,6 +95,7 @@ namespace CommandExtension
                 State = state;
             }
         }
+   
         // COMMAND CREATION
         public static Command[] Commands = new Command[]
         {
@@ -144,6 +145,7 @@ namespace CommandExtension
         };
         #endregion
         // ITEM ID's
+
       //  private static Dictionary<string, int> allIds = ItemDatabase.ids;
         private static Dictionary<string, int> moneyIds = new Dictionary<string, int>() { { "coins", 60000 }, { "orbs", 18010 }, { "tickets", 18011 } };
         private static Dictionary<string, int> xpIds = new Dictionary<string, int>() { { "combatexp", 60003 }, { "farmingexp", 60004 }, { "miningexp", 60006 }, { "explorationexp", 60005 }, { "fishingexp", 60008 } };
@@ -379,24 +381,24 @@ namespace CommandExtension
         private static bool CategorizeItemList()
         {
         //    if (ItemDatabase.ids == null || ItemDatabase.ids.Count < 1)
-         /*       return false;
-            foreach (var item in allIds)
-            {
-                if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Furniture)
-                    categorizedItems["Furniture Items"].Add(item.Key, item.Value);
-                else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Equip)
-                    categorizedItems["Equipable Items"].Add(item.Key, item.Value);
-                else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Quest)
-                    categorizedItems["Quest Items"].Add(item.Key, item.Value);
-                else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Craftable)
-                    categorizedItems["Craftable Items"].Add(item.Key, item.Value);
-                else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Monster)
-                    categorizedItems["Monster Items"].Add(item.Key, item.Value);
-                else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Use)
-                    categorizedItems["Useable Items"].Add(item.Key, item.Value);
-                else
-                    categorizedItems["Other Items"].Add(item.Key, item.Value);
-            }*/
+            /*       return false;
+               foreach (var item in allIds)
+               {
+                   if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Furniture)
+                       categorizedItems["Furniture Items"].Add(item.Key, item.Value);
+                   else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Equip)
+                       categorizedItems["Equipable Items"].Add(item.Key, item.Value);
+                   else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Quest)
+                       categorizedItems["Quest Items"].Add(item.Key, item.Value);
+                   else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Craftable)
+                       categorizedItems["Craftable Items"].Add(item.Key, item.Value);
+                   else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Monster)
+                       categorizedItems["Monster Items"].Add(item.Key, item.Value);
+                   else if (ItemDatabase.GetItemData(item.Value).category == ItemCategory.Use)
+                       categorizedItems["Useable Items"].Add(item.Key, item.Value);
+                   else
+                       categorizedItems["Other Items"].Add(item.Key, item.Value);
+               }*/
             return true;
         }
         #endregion
