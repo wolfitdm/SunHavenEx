@@ -1,4 +1,4 @@
-# CURRENTLY OUTDATED, it will be updated in the near future!
+# Update !marry and !divorce command for patch 1.5
 
 
 
