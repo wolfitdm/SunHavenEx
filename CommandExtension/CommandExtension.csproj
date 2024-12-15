@@ -41,6 +41,10 @@
     <Reference Include="KeepAlive">
       <HintPath>..\..\..\..\Libraries\KeepAlive.dll</HintPath>
     </Reference>
+    <Reference Include="PSS.Database, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Libraries\PSS.Database.dll</HintPath>
+    </Reference>
     <Reference Include="QFSW.QC">
       <HintPath>..\..\..\..\Libraries\QFSW.QC.dll</HintPath>
     </Reference>

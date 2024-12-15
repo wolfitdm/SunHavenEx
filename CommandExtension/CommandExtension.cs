@@ -11,6 +11,7 @@ using UnityEngine;
 using System.IO;
 using Wish;
 using System.Runtime.Remoting.Messaging;
+using PSS;
 
 
 namespace CommandExtension
@@ -146,8 +147,30 @@ namespace CommandExtension
         };
         #endregion
         // ITEM ID's
+        private static Dictionary<string, int> getAllIds()
+        {
+            try
+            {
+               return (Dictionary<string, int>)typeof(Database).GetField("ids", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(Database.Instance);
+            } catch
+            {
+                return new Dictionary<string, int>();
+            }
+        }
 
-       // private static Dictionary<string, int> allIds = ItemDatabaseWrapper.ItemDatabase.ids;
+        private static HashSet<int> getValidIds()
+        {
+            try
+            {
+                return (HashSet<int>)typeof(Database).GetField("validIDs", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(Database.Instance);
+            }
+            catch
+            {
+                return new HashSet<int>();
+            }
+        }
+        private static Dictionary<string, int> allIds = getAllIds();
+        private static HashSet<int> validIDs = getValidIds();
         private static Dictionary<string, int> moneyIds = new Dictionary<string, int>() { { "coins", 60000 }, { "orbs", 18010 }, { "tickets", 18011 } };
         private static Dictionary<string, int> xpIds = new Dictionary<string, int>() { { "combatexp", 60003 }, { "farmingexp", 60004 }, { "miningexp", 60006 }, { "explorationexp", 60005 }, { "fishingexp", 60008 } };
         private static Dictionary<string, int> bonusIds = new Dictionary<string, int>() { { "health", 60009 }, { "mana", 60007 } };
@@ -698,81 +721,60 @@ namespace CommandExtension
         {
             if (mayCommandParam.Length >= 2)
             {
-                if (int.TryParse(mayCommandParam[1], out int itemId))
+                int itemId = 0;
+                int stringItemId = 0;
+                itemId = int.TryParse(mayCommandParam[1], out itemId) ? itemId : 0;
+				string stringItem = itemId == 0 ? mayCommandParam[1].ToLower() : "";
+				stringItemId = itemId == 0 ? (Database.GetID(stringItem)) : 0;
+				int itemAmount = ((mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1);
+				if (itemId > 0)
                 {
-                   // if (allIds.Values.Contains(itemId))
-                  //  {
-                    //    int itemAmount = (mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1;
-                   //     GetPlayerForCommand().Inventory.AddItem(itemId, itemAmount, 0, true, true);
-                       // CommandFunction_PrintToChat($"{playerNameForCommands.ColorText(Color.magenta)} got {itemAmount.ToString().ColorText(Color.white)} * {ItemDatabaseWrapper.ItemDatabase.GetItemData(itemId).name.ColorText(Color.white)}!".ColorText(Yellow));
-                  //  }
-                  //  else
-                        CommandFunction_PrintToChat($"no item with id: {itemId.ToString().ColorText(Color.white)} found!".ColorText(Red));
-                }
-                else
-                {
-                    int itemsFound = 0;
-                    int lastItemId = 0;
-                    if (mayCommandParam.Length >= 2)
+                    if (Database.ValidID(itemId))
                     {
-                      /*  foreach (KeyValuePair<string, int> id in allIds)
-                        {
-                            if (id.Key.Contains(mayCommandParam[1].ToLower()))
-                            {
-                                lastItemId = id.Value;
-                                itemsFound++;
-                                if (mayCommandParam[1] == id.Key)
-                                {
-                                    int itemAmount = ((mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1);
-                                    GetPlayerForCommand().Inventory.AddItem(lastItemId, itemAmount, 0, true, true);
-                                    return true;
-                                }
-                            }
-                        }
-                        if (itemsFound == 1)
-                        {
-                            int itemAmount = ((mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1);
-                            GetPlayerForCommand().Inventory.AddItem(lastItemId, itemAmount, 0, true, true);
-                        }
-                        else if (itemsFound > 1)
-                        {
-                            CommandFunction_PrintToChat("[FOUND ITEMS]".ColorText(Color.black) + "use a unique item-name or id".ColorText(Color.white));
-                            foreach (KeyValuePair<string, int> id in allIds)
-                            {
-                                if (id.Key.Contains(mayCommandParam[1]))
-                                    CommandFunction_PrintToChat(id.Key + " : ".ColorText(Color.black) + id.Value.ToString());
-                            }
-                        }
-                        else
-                            CommandFunction_PrintToChat($"no item name contains {mayCommandParam[1].ColorText(Color.white)}!".ColorText(Red));*/
+                       GetPlayerForCommand().Inventory.AddItem(itemId, itemAmount, 0, true, true);
+                       CommandFunction_PrintToChat($"{playerNameForCommands.ColorText(Color.magenta)} got {itemAmount.ToString().ColorText(Color.white)} * {itemId.ToString().ColorText(Color.white)}!".ColorText(Yellow));
+                    }
+					else
+					{
+						CommandFunction_PrintToChat($"no item with id: {itemId.ToString().ColorText(Color.white)} found!".ColorText(Red));
+					}
+                }
+                else if (stringItemId > 0) 
+                {
+					if (Database.ValidID(stringItemId))
+                    {
+						GetPlayerForCommand().Inventory.AddItem(stringItemId, itemAmount, 0, true, true);
                     }
                     else
-                        CommandFunction_PrintToChat($"invalid itemId!".ColorText(Red));
+					{
+                        CommandFunction_PrintToChat($"invalid itemId: {stringItemId.ToString().ColorText(Color.white)}!".ColorText(Red));
+						CommandFunction_PrintToChat($"no item name contains {stringItem.ColorText(Color.white)}!".ColorText(Red));
+					}
                     return true;
                 }
+				else
+				{
+					CommandFunction_PrintToChat($"invalid itemId: {stringItemId.ToString().ColorText(Color.white)}!".ColorText(Red));
+				}
             }
             else
+			{
                 CommandFunction_PrintToChat($"wrong use of !give".ColorText(Red));
+			}
             return true;
         }
         // GIVE ITEM BY ID/NAME 
         private static bool CommandFunction_ShowItemByName(string[] mayCommandParam)
-        {
+        {   
             if (mayCommandParam.Length >= 2)
             {
-                List<string> items = new List<string>();
-               // foreach (KeyValuePair<string, int> id in allIds)
-            //    {
-            //        if (id.Key.ToLower().Contains(mayCommandParam[1]))
-              //          items.Add(id.Key.ColorText(Color.white) + " : ".ColorText(Color.black) + id.Value.ToString().ColorText(Color.white));
-             //   }
-            //    if (items.Count >= 1)
-            //    {
-            //        CommandFunction_PrintToChat("[FOUND ITEMS]".ColorText(Color.black));
-                //    foreach (string ítem in items)
-                //        CommandFunction_PrintToChat(ítem);
-               // }
-            }
+				string stringItemId = mayCommandParam[1].ToLower();
+				CommandFunction_PrintToChat($"Please use: https://kryzik.github.io/sun-haven-items/?search={stringItemId.ColorText(Color.white)}".ColorText(Red));
+            } 
+			else 
+			{
+				CommandFunction_PrintToChat($"wrong use of !showitembyname".ColorText(Red));
+			}	
             return true;
         }
         // GIVE DEV ITEMS
