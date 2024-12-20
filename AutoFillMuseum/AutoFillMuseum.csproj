@@ -37,6 +37,14 @@
     <Reference Include="BepInEx">
       <HintPath>..\..\..\..\Libraries\BepInEx.dll</HintPath>
     </Reference>
+    <Reference Include="PSS.Database, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Libraries\PSS.Database.dll</HintPath>
+    </Reference>
+    <Reference Include="Sirenix.Serialization, Version=2.1.9.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Libraries\Sirenix.Serialization.dll</HintPath>
+    </Reference>
     <Reference Include="SunHaven.Core, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Libraries\SunHaven.Core.dll</HintPath>

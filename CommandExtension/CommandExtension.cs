@@ -12,7 +12,13 @@ using System.IO;
 using Wish;
 using System.Runtime.Remoting.Messaging;
 using PSS;
-
+using System.Collections;
+using System.Threading;
+using System.Security.Policy;
+using KeepAlive;
+using BepInEx.Logging;
+using BepInEx.Configuration;
+using ZeroFormatter;
 
 namespace CommandExtension
 {
@@ -21,7 +27,7 @@ namespace CommandExtension
         public const string PLUGIN_AUTHOR = "Rx4Byte";
         public const string PLUGIN_NAME = "Command Extension";
         public const string PLUGIN_GUID = "com.Rx4Byte.CommandExtension";
-        public const string PLUGIN_VERSION = "1.2.1";
+        public const string PLUGIN_VERSION = "1.5.3";
     }
     [CommandPrefix("!")]
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
@@ -83,6 +89,14 @@ namespace CommandExtension
         public const string CmdFixYear = CmdPrefix + "yearfix";
         public const string CmdIncDecYear = CmdPrefix + "years";
         public const string CmdCheats = CmdPrefix + "cheats";
+        public const string CmdQuestsList = CmdPrefix + "listquests";
+        public const string CmdQuestLog = CmdPrefix + "questlog";
+        public const string CmdQuestAdd = CmdPrefix + "addquest";
+        public const string CmdQuestRemove = CmdPrefix + "removequest";
+        public const string CmdSaveGame = CmdPrefix + "save";
+        public const string CmdSleepSave = CmdPrefix + "sleepsave";
+        public const string CmdBackupSaveGame = CmdPrefix + "backupsave";
+        public const string CmdBackupSleepSave = CmdPrefix + "backupsleepsave";
         public enum CommandState { None, Activated, Deactivated }
         // COMMAND CLASS
         public class Command
@@ -143,9 +157,737 @@ namespace CommandExtension
             new Command(CmdSetSeason,               "change season",                                                            CommandState.None),
             new Command(CmdFixYear,                 "fix year (if needed)",                                                     CommandState.Activated),
             new Command(CmdIncDecYear,              "add or sub years '!years [value]' '-' to sub",                             CommandState.None),
-            new Command(CmdCheats,                  "Toggle Cheats and hotkeys like F7,F8",                                     CommandState.Deactivated)
+            new Command(CmdCheats,                  "Toggle Cheats and hotkeys like F7,F8",                                     CommandState.Deactivated),
+            new Command(CmdQuestsList,              "See the quest ids from the entire game",                                   CommandState.None),
+            new Command(CmdQuestLog,                "See the quest ids from the quest log",                                     CommandState.None),
+            new Command(CmdQuestAdd,                "Add a quest id",                                                           CommandState.None),
+            new Command(CmdQuestRemove,             "Remove a quest id",                                                        CommandState.None),
+            new Command(CmdSaveGame,                "Save the game",                                                            CommandState.None),
+            new Command(CmdSleepSave,               "Sleep and save the game",                                                  CommandState.None),
+            new Command(CmdBackupSaveGame,          "Save the game (backup)",                                                   CommandState.None),
+            new Command(CmdBackupSleepSave,         "Sleep and save the game (backup)",                                         CommandState.None),
         };
         #endregion
+
+        // QUEST ID's
+
+        public static string[] allQuestIds = new string[]
+        {
+            "AStrangerInTown",
+            "APromiseMade1Quest",
+            "APromiseMade2Quest",
+            "DarkWaters1Quest",
+            "DarkWaters2Quest",
+            "DarkWaters3Quest",
+            "DarkWaters4Quest",
+            "DarkWaters5Quest",
+            "DarkWaters6Quest",
+            "DarkWaters7Quest",
+            "DarkWaters8Quest",
+            "DarkWaters9Quest",
+            "DarkWaters10Quest",
+            "DarkWaters11Quest",
+            "DarkWaters12Quest",
+            "DarkWaters13Quest",
+            "DarkWaters14Quest",
+            "DarkWaters15Quest",
+            "DarkWaters16Quest",
+            "DarkWaters17Quest",
+            "DarkWaters18Quest",
+            "DarkWaters19Quest",
+            "DarkWaters20Quest",
+            "DarkWaters21Quest",
+            "DarkWaters22Quest",
+            "DarkWaters23Quest",
+            "DarkWaters24Quest",
+            "TheCallOf1Quest",
+            "TheCallOf2Quest",
+            "TheWhirlpoolQuest",
+            "AmateurDentistryQuest",
+            "AmmoResupplyQuest",
+            "AnchorsAWeighQuest",
+            "ATadRustyQuest",
+            "AwTrenchnutsQuest",
+            "DefendingTheDeepsQuest",
+            "FathomlessAppetiteQuest",
+            "IWantToysQuest",
+            "KabobJobQuest",
+            "KeelhaulEmAllQuest",
+            "KeysToSuccessQuest",
+            "LendASandQuest",
+            "ManaFuelQuest",
+            "MonsterBaitQuest",
+            "PilferingPinchersQuest",
+            "SeasideSaladQuest",
+            "SeeingStarsQuest",
+            "SmoothieMoveQuest",
+            "ThievesOfTheDeepQuest",
+            "TreatsToEatQuest",
+            "UnburiedTreasureQuest",
+            "UnderwaterFashionQuest",
+            "ValueOfADollarQuest",
+            "WantedWormsQuest",
+            "WoodYouHelpQuest",
+            "WoopWoopQuest",
+            "AngelsPolishQuest",
+            "ATonicForLukeQuest",
+            "BeeancasHoneyQuest",
+            "CaspiansTrinketsQuest",
+            "ClaysPestControlQuest",
+            "GrensProofQuest",
+            "GriffinsGottaEatQuest",
+            "IrisCrystalsQuest",
+            "JarrodsSightQuest",
+            "LuciusJarsQuest",
+            "LuciusNectarineSmoothieQuest",
+            "MorgansLeavesQuest",
+            "OpalsFishQuest",
+            "OreForSylviaQuest",
+            "PlatosSugarPlumsQuest",
+            "QuincysFoodServiceQuest",
+            "ReedsNeedsQuest",
+            "RelTarsPeanutsQuest",
+            "TornnsDyeQuest",
+            "VaansHorticultureQuest",
+            "WesleysEmergencyQuest",
+            "WesleysWalkChoy",
+            "WillowsCrystalsQuest",
+            "AlbertsDietQuest",
+            "AlbertsPasttimeQuest",
+            "AllisonsClamsQuest",
+            "AllisonsRiceBallQuest",
+            "AllNighterQuest",
+            "AmandasFavoriteFoodQuest",
+            "AnnesSapphireQuest",
+            "BarracksHelmetShortageQuest",
+            "BarracksSwordShortageQuest",
+            "BilliesCarbsQuest",
+            "CalvinsBigBurgerQuest",
+            "CalvinsLegsQuest",
+            "CamilasLampQuest",
+            "CatherinesRecipeQuest",
+            "CharityCallQuest",
+            "CheeseForLiam",
+            "ChocolateMilkStandQuest",
+            "ClaudesCravingQuest",
+            "ClaudesTomatoesQuest",
+            "ElizabethsProofQuest",
+            "EmmasIronWillQuest",
+            "EmmettsSkinCareQuest",
+            "FireCrystalDeliveryQuest",
+            "FlavorSavorQuest",
+            "FoolsToolsQuest",
+            "GiuseppesLoomQuest",
+            "HeathersBirthstoneQuest",
+            "HeathersShipmentQuest",
+            "JudithsCenterpieceQuest",
+            "JunsHoneyQuest",
+            "KaisHardWood",
+            "KaisHotSauce",
+            "KaisSashimiQuest",
+            "KarasRecordQuest",
+            "KarasStrawberriesQuest",
+            "KittysSecretStarfishQuest",
+            "LestersLampQuest",
+            "LestersTroutQuest",
+            "LuciasSandDollarsQuest",
+            "LynnsBlueberrySaladQuest",
+            "MakeASeatQuest",
+            "MarisTrickPeppersQuest",
+            "MinjisBalloonFruitQuest",
+            "MiyeonsDaisiesQuest",
+            "MiyeonsRaspberriesQuest",
+            "NathanielsEquipmentQuest",
+            "OnionsForRonaldQuest",
+            "PetersSealegsQuest",
+            "PintosHeadacheQuest",
+            "PintosPosturingQuest",
+            "BassBase",
+            "ChillOutMan",
+            "FamilyFarm",
+            "HayIsForHorses",
+            "LockandSnowd",
+            "PumpedForPumpkin",
+            "SeeingIsBeLeaving",
+            "TouchSand",
+            "PodsPrankQuest",
+            "PodsStrawBedQuest",
+            "PracticeApplesQuest",
+            "RaimisLullabyQuest",
+            "CatherinesBrewQuest",
+            "CopperForCamila",
+            "EmmasDebtQuest",
+            "LestersSnackQuest",
+            "NoodlesForGiuseppe",
+            "RozasFertilizerQuest",
+            "ALittleHeartQuest",
+            "AxingAFavorQuest",
+            "BeamMeUpQuest",
+            "CakeForCharlieQuest",
+            "CiderAndFishinQuest",
+            "CloverAndOutQuest",
+            "CocoaSurpriseQuest",
+            "FallSpiceQuest",
+            "FruitDrillsQuest",
+            "FunnyHoneyQuest",
+            "FurnaceFireQuest",
+            "GetThePaperQuest",
+            "HomesForBeesQuest",
+            "LeafMeAloneQuest",
+            "LettuceGoQuest",
+            "LightLunchQuest",
+            "MeanAndGreenQuest",
+            "MetalMantleQuest",
+            "MoreFloorQuest",
+            "NoManLikeSnowmanQuest",
+            "PeasAndThankYouQuest",
+            "PopOffQuest",
+            "ResupplyMissionQuest",
+            "SoupOnQuest",
+            "SpotOfTeaQuest",
+            "SpringCleaningQuest",
+            "SpringRosesQuest",
+            "StarOfTheShowQuest",
+            "SummerBountyQuest",
+            "SummerCharmsQuest",
+            "SummerSnacksQuest",
+            "SweetMemoriesQuest",
+            "ThatsAWrapQuest",
+            "ToastInNeedQuest",
+            "TurnUpTheHeatQuest",
+            "WallRepairQuest",
+            "WarmAndFuzzyQuest",
+            "WarmTheAnimalsQuest",
+            "WindmillRepairQuest",
+            "WinterDessertQuest",
+            "ShangsHardstoneQuest",
+            "ShangsMilkQuest",
+            "SmoothieForEmmettQuest",
+            "SolonsFavoriteQuest",
+            "SophiesArmorQuest",
+            "SophiesStrengthTestQuest",
+            "SprucingSeasonQuest",
+            "TonyasNewCouchQuest",
+            "TopisBridgeQuest",
+            "TopisTattoos",
+            "VivisBananas",
+            "VivisBars",
+            "VivisRibs",
+            "WornhardtsPaperweightsQuest",
+            "WornhardtsSuppliesQuest",
+            "ArnoldsShirtQuest",
+            "CasperaNeedsSilkQuest",
+            "CassiasCandleQuest",
+            "ChristinesCratesQuest",
+            "CordeliasBountyQuest",
+            "CordeliasPlantQuest",
+            "CushionForHoneyQuest",
+            "DonovansBonesQuest",
+            "DwaynesWeightsQuest",
+            "ErisUmbrasCompassQuest",
+            "FaeyonsScratcherQuest",
+            "MirrorForFelixQuest",
+            "PhoebesCravingQuest",
+            "RibbonForTonyQuest",
+            "SlobertsMedicationQuest",
+            "SpectralKnightsShoeQuest",
+            "TapeForTaliQuest",
+            "TheDoctorsBrewQuest",
+            "TonysShrimpQuest",
+            "WyattsLunchQuest",
+            "CombatTrainingQuest",
+            "CornTributeQuest",
+            "AlbertsKeepsakeQuest",
+            "AmandasBookQuest",
+            "BernardsBannersQuest",
+            "CalvinIsBoredQuest",
+            "CamilasCravingQuest",
+            "CatherinesFertilizerQuest",
+            "ClaudesRecordQuest",
+            "EmmasSpillQuest",
+            "HeatTheBarracksQuest",
+            "HelpfulHalitosisQuest",
+            "JustWhatTheDoctorOrderedQuest",
+            "KittysDressQuest",
+            "KittysGardenQuest",
+            "KittyWantsFishQuest",
+            "AHerosHarvest1AQuest",
+            "AHerosHarvest1BQuest",
+            "AHerosHarvest2Quest",
+            "AHerosHarvest3Quest",
+            "AHerosHarvest4Quest",
+            "AHerosHarvest5Quest",
+            "Daybreak1AQuest",
+            "Daybreak1BQuest",
+            "Daybreak2Quest",
+            "FriendsToNelvari0Quest",
+            "FriendsToNelvari1Quest",
+            "FriendsToNelvari2Quest",
+            "FriendsToNelvari3Quest",
+            "FriendsToNelvari4Quest",
+            "FriendsToNelvari5Quest",
+            "FriendsToNelvari6Quest",
+            "FriendsToNelvari7Quest",
+            "PeaceWithWithergate1Quest",
+            "PeaceWithWithergate2Quest",
+            "PeaceWithWithergate3Quest",
+            "PeaceWithWithergate4Quest",
+            "PeaceWithWithergate5Quest",
+            "PeaceWithWithergate6Quest",
+            "PeaceWithWithergate7Quest",
+            "PeaceWithWithergate8Quest",
+            "ANeighborsAid1Quest",
+            "ANeighborsAid2Quest",
+            "AWheelyBigProblemQuest",
+            "BladeBuddy1Quest",
+            "BladeBuddy2Quest",
+            "BladeBuddy3Quest",
+            "Halloween1Quest",
+            "Halloween2Quest",
+            "Halloween3Quest",
+            "HolidaySoup",
+            "LanternFestival1Quest",
+            "LanternFestival2Quest",
+            "LanternFestival3Quest",
+            "LanternFestival4Quest",
+            "LanternFestival5Quest",
+            "MusicFestival1Quest",
+            "MusicFestival2Quest",
+            "MusicFestival3Quest",
+            "PickaxePartner1Quest",
+            "PickaxePartner2Quest",
+            "PickaxePartner3Quest",
+            "PlayerBirthdayQuest",
+            "SecretSantaAnne",
+            "SecretSantaCatherine",
+            "SecretSantaClaude",
+            "SecretSantaDarius",
+            "SecretSantaDonovan",
+            "SecretSantaIris",
+            "SecretSantaJun",
+            "SecretSantaKai",
+            "SecretSantaKarish",
+            "SecretSantaKitty",
+            "SecretSantaLiam",
+            "SecretSantaLucia",
+            "SecretSantaLucius",
+            "SecretSantaLynn",
+            "SecretSantaMiyeon",
+            "SecretSantaNathaniel",
+            "SecretSantaShang",
+            "SecretSantaVaan",
+            "SecretSantaVivi",
+            "SecretSantaWesley",
+            "SecretSantaWornhardt",
+            "SecretSantaXyla",
+            "SecretSantaZaria",
+            "SummerBBQ1Quest",
+            "SummerBBQ2Quest",
+            "SummerBBQ3Quest",
+            "WheelinNDealinQuest",
+            "WheelRepairQuest",
+            "WinterFestival1Quest",
+            "WinterFestival2Quest",
+            "WinterFestival3Quest",
+            "AnneHangout1Quest",
+            "AnneHangout2Quest",
+            "CatherineHangout1Quest",
+            "CatherineHangout2Quest",
+            "ClaudeHangout1Quest",
+            "ClaudeHangout2Quest",
+            "DariusHangout1Quest",
+            "DariusHangout2Quest",
+            "DonovanHangout1Quest",
+            "DonovanHangout2Quest",
+            "IrisHangout1Quest",
+            "IrisHangout2Quest",
+            "JunHangout1Quest",
+            "JunHangout2Quest",
+            "KaiHangout1Quest",
+            "KaiHangout2Quest",
+            "KarishHangout1Quest",
+            "KarishHangout2Quest",
+            "KittyHangout1Quest",
+            "KittyHangout2Quest",
+            "LiamHangout1Quest",
+            "LiamHangout2Quest",
+            "LuciaHangout1Quest",
+            "LuciaHangout2Quest",
+            "LuciusHangout1Quest",
+            "LuciusHangout2Quest",
+            "LynnHangout1Quest",
+            "LynnHangout2Quest",
+            "MiyeonHangout1Quest",
+            "MiyeonHangout2Quest",
+            "NathanielHangout1Quest",
+            "NathanielHangout2Quest",
+            "ShangHangout1Quest",
+            "ShangHangout2Quest",
+            "VaanHangout1Quest",
+            "VaanHangout2Quest",
+            "ViviHangout1Quest",
+            "ViviHangout2Quest",
+            "WesleyHangout1Quest",
+            "WesleyHangout2Quest",
+            "WornhardtHangout1Quest",
+            "WornhardtHangout2Quest",
+            "XylaHangout1Quest",
+            "XylaHangout2Quest",
+            "ZariaHangout1Quest",
+            "ZariaHangout2Quest",
+            "HarvestingWheat1Quest",
+            "HarvestingWheat2Quest",
+            "Intro1Quest",
+            "Intro2Quest",
+            "Intro3Quest",
+            "JudithsWeedsQuest",
+            "JunBeautificationQuest",
+            "JunsLessonQuest",
+            "KaiHomeImprovement",
+            "ANewHome1Quest",
+            "ANewHome2Quest",
+            "ANewHome3Quest",
+            "ANewHome4Quest",
+            "ANewHome5Quest",
+            "ClearingTheRoad1Quest",
+            "ClearingTheRoad2Quest",
+            "ConfrontingDynus1Quest",
+            "ConfrontingDynus2Quest",
+            "ConfrontingDynus3Quest",
+            "ConfrontingDynus4Quest",
+            "ConfrontingDynus5Quest",
+            "ConfrontingDynus6Quest",
+            "DealingWithADragon1Quest",
+            "DealingWithADragon2Quest",
+            "DealingWithADragon3Quest",
+            "DealingWithADragon4Quest",
+            "DealingWithADragon5Quest",
+            "DealingWithADragon6Quest",
+            "DealingWithADragon7Quest",
+            "DealingWithADragon8Quest",
+            "JourneyToWithergate1Quest",
+            "JourneyToWithergate2Quest",
+            "JourneyToWithergate3Quest",
+            "JourneyToWithergate4Quest",
+            "JourneyToWithergate5Quest",
+            "JourneyToWithergate6Quest",
+            "NewJourneyToWithergate1Quest",
+            "NewJourneyToWithergate2Quest",
+            "NewJourneyToWithergate3Quest",
+            "NewJourneyToWithergate4Quest",
+            "NewJourneyToWithergate5Quest",
+            "NewJourneyToWithergate6Quest",
+            "NewJourneyToWithergate7Quest",
+            "NewJourneyToWithergate8Quest",
+            "NewJourneyToWithergate9Quest",
+            "NewJourneyToWithergate10Quest",
+            "NewJourneyToWithergate11Quest",
+            "NewJourneyToWithergate12Quest",
+            "NewJourneyToWithergate13Quest",
+            "NewJourneyToWithergate14Quest",
+            "NewJourneyToWithergate15Quest",
+            "NewJourneyToWithergate16Quest",
+            "NewJourneyToWithergate17Quest",
+            "NewJourneyToWithergate18Quest",
+            "NewJourneyToWithergate19Quest",
+            "NewJourneyToWithergate20Quest",
+            "NewJourneyToWithergate21Quest",
+            "NivarasLessonCommonality1Quest",
+            "NivarasLessonCommonality2Quest",
+            "NivarasLessonCommonality3Quest",
+            "NivarasLessonCommonality4Quest",
+            "NivarasLessonCommonality5Quest",
+            "NivarasLessonCommonality6Quest",
+            "NivarasLessonCommonality7Quest",
+            "NivarasLessonCommonality8Quest",
+            "NivarasLessonGrowth1Quest",
+            "NivarasLessonGrowth2Quest",
+            "NivarasLessonGrowth3Quest",
+            "NivarasLessonGrowth4Quest",
+            "NivarasLessonPerspective1Quest",
+            "NivarasLessonPerspective2Quest",
+            "NivarasLessonPerspective3Quest",
+            "NivarasLessonPerspective4Quest",
+            "NivarasLessonPerspective5Quest",
+            "NivarasLessonPerspective6Quest",
+            "NivarasLessonPerspective7Quest",
+            "PathToNelvari1Quest",
+            "PathToNelvari2Quest",
+            "PathToNelvari3Quest",
+            "PathToNelvari4Quest",
+            "PathToNelvari5Quest",
+            "PathToNelvari6Quest",
+            "PathToNelvari7Quest",
+            "PathToNelvari8Quest",
+            "PathToNelvari9Quest",
+            "PathToNelvari10Quest",
+            "PathToNelvari11Quest",
+            "PathToNelvari12Quest",
+            "PathToNelvari13Quest",
+            "PathToNelvari14Quest",
+            "PathToNelvari15Quest",
+            "PathToNelvari16Quest",
+            "PathToNelvari17Quest",
+            "PathToNelvari18Quest",
+            "PathToNelvari19Quest",
+            "PathToNelvari20Quest",
+            "PathToNelvari21Quest",
+            "PathToNelvari22Quest",
+            "PathToNelvari23Quest",
+            "PathToNelvari24Quest",
+            "QuarryOrderQuest",
+            "SunDragonsApprentice1Quest",
+            "SunDragonsApprentice2Quest",
+            "SunDragonsApprentice3Quest",
+            "SunDragonsApprentice4Quest",
+            "TheKingsFavor1Quest",
+            "TheKingsFavor2Quest",
+            "TheKingsFavor3Quest",
+            "TheKingsFavor4Quest",
+            "TheKingsFavor5Quest",
+            "TheKingsFavor6Quest",
+            "TheKingsFavor7AQuest",
+            "TheKingsFavor7BQuest",
+            "TheKingsFavor8Quest",
+            "TheKingsFavor9Quest",
+            "TheKingsFavor10Quest",
+            "TheKingsFavor11Quest",
+            "TheKingsFavor12Quest",
+            "TheMysteryOfNelvari1Quest",
+            "TheMysteryOfNelvari2Quest",
+            "TheMysteryOfNelvari3Quest",
+            "TheMysteryOfNelvari4Quest",
+            "TheSunDragonsProtection0Quest",
+            "TheSunDragonsProtection1Quest",
+            "TheSunDragonsProtection2Quest",
+            "TheSunDragonsProtection3Quest",
+            "TheSunDragonsProtection4Quest",
+            "TheSunDragonsProtection5Quest",
+            "TheSunDragonsProtection6Quest",
+            "TheSunDragonsProtection7Quest",
+            "TheSunDragonsProtection8Quest",
+            "TheSunDragonsProtection9Quest",
+            "TheWorldDragon1Quest",
+            "TheWorldDragon2Quest",
+            "TheWorldDragon3Quest",
+            "TheWorldDragon4Quest",
+            "TheWorldDragon5Quest",
+            "TheWorldDragon6Quest",
+            "TheWorldDragon7Quest",
+            "TheWorldDragon8Quest",
+            "UnwelcomeWelcoming1Quest",
+            "UnwelcomeWelcoming2Quest",
+            "UnwelcomeWelcoming3Quest",
+            "UnwelcomeWelcoming4Quest",
+            "WelcomeToSunHaven1Quest",
+            "WelcomeToSunHaven2Quest",
+            "WelcomeToSunHaven3Quest",
+            "WelcomeToSunHaven4Quest",
+            "WelcomeToSunHaven5Quest",
+            "AnneMarriageQuest",
+            "CatherineMarriageQuest",
+            "ClaudeMarriageQuest",
+            "DariusMarriageQuest",
+            "DonovanMarriageQuest",
+            "IrisMarriageQuest",
+            "JunMarriageQuest",
+            "KaiMarriageQuest",
+            "KarishMarriageQuest",
+            "KittyMarriageQuest",
+            "LiamMarriageQuest",
+            "LuciaMarriageQuest",
+            "LuciusMarriageQuest",
+            "LynnMarriageQuest",
+            "MiyeonMarriageQuest",
+            "NathanielMarriageQuest",
+            "ShangMarriageQuest",
+            "VaanMarriageQuest",
+            "ViviMarriageQuest",
+            "WesleyMarriageQuest",
+            "WornhardtMarriageQuest",
+            "XylaMarriageQuest",
+            "ZariaMarriageQuest",
+            "MiyeonsBeanstalkQuest",
+            "MiyeonsGrowBeanstalkQuest",
+            "MiyeonsWaterBeanstalkQuest",
+            "MonkeyMadnessQuest",
+            "AskingPodQuest",
+            "DinnerOnRonaldQuest",
+            "GetTheSpaghettiReadyQuest",
+            "PetersLureQuest",
+            "AMinorMinerQuest",
+            "GrowingAFamily0Quest",
+            "GrowingAFamily1Quest",
+            "GrowingAFamily2Quest",
+            "GrowingAFamily3Quest",
+            "GrowingAFamily4Quest",
+            "GrowingAFamily5Quest",
+            "GrowingAFamily6Quest",
+            "GrowingAFamily7Quest",
+            "GrowingAFamily8Quest",
+            "JustASmallFryQuest",
+            "LikeFarmerLikeChildQuest",
+            "PodsNecklaceQuest",
+            "PostMarriageQuestAnne1",
+            "PostMarriageQuestCatherine1",
+            "PostMarriageQuestClaude1",
+            "PostMarriageQuestDarius1",
+            "PostMarriageQuestDonovan1",
+            "PostMarriageQuestIris1",
+            "PostMarriageQuestJun1",
+            "PostMarriageQuestKai1",
+            "PostMarriageQuestKarish1",
+            "PostMarriageQuestKitty1",
+            "PostMarriageQuestLiam1",
+            "PostMarriageQuestLucia1",
+            "PostMarriageQuestLucius1",
+            "PostMarriageQuestLynn1",
+            "PostMarriageQuestMiyeon1",
+            "PostMarriageQuestNathaniel1",
+            "PostMarriageQuestShang1",
+            "PostMarriageQuestVaan1",
+            "PostMarriageQuestVivi1",
+            "PostMarriageQuestWesley1",
+            "PostMarriageQuestWornhardt1",
+            "PostMarriageQuestXyla1",
+            "PostMarriageQuestZaria1",
+            "PrepareTheEventSquareQuest",
+            "AnglersBetQuest",
+            "ExplorersTreasureQuest",
+            "FarmersOrdersQuest",
+            "SmithsSkillsQuest",
+            "WarriorsRequestQuest",
+            "RaimiIntroQuest",
+            "BagOfKittenNipQuest",
+            "CaskOfElvenGrapeJuiceQuest",
+            "DiscoloredFishingLureQuest",
+            "EasternBangleQuest",
+            "EmmasLostToyQuest",
+            "GrimeCoveredMagicCharmQuest",
+            "InjuredFighterQuest",
+            "LostLetterQuest",
+            "MedicalGloveQuest",
+            "ReadingGlassesQuest",
+            "SunHavenLibraryBookQuest",
+            "WaterloggedHelmetQuest",
+            "RexCapQuest",
+            "RiddleMeThisQuest",
+            "RonaldAndMarisBetQuest",
+            "RSHCafeQuest",
+            "RSHClothingStoreQuest",
+            "RSHDogHouseQuest",
+            "RSHExtraLargeTableQuest",
+            "RSHLargeTableQuest",
+            "RSHMediumTableQuest",
+            "RSHOwlStatueQuest",
+            "RSHSalonQuest",
+            "RSHSmallTableQuest",
+            "ShangsArrivalQuest",
+            "ShangsLeavingQuest",
+            "SolonNeedsCoalQuest",
+            "SolonNeedsMeatQuest",
+            "AnneMarriageGiftQuest1",
+            "AnneMarriageGiftQuest2",
+            "AnneMarriageGiftQuest3",
+            "AnneMarriageGiftQuest4",
+            "CatherineMarriageGiftQuest1",
+            "CatherineMarriageGiftQuest2",
+            "CatherineMarriageGiftQuest3",
+            "CatherineMarriageGiftQuest4",
+            "ClaudeMarriageGiftQuest1",
+            "ClaudeMarriageGiftQuest2",
+            "ClaudeMarriageGiftQuest3",
+            "ClaudeMarriageGiftQuest4",
+            "DariusMarriageGiftQuest1",
+            "DariusMarriageGiftQuest2",
+            "DariusMarriageGiftQuest3",
+            "DariusMarriageGiftQuest4",
+            "DonovanMarriageGiftQuest1",
+            "DonovanMarriageGiftQuest2",
+            "DonovanMarriageGiftQuest3",
+            "DonovanMarriageGiftQuest4",
+            "IrisMarriageGiftQuest1",
+            "IrisMarriageGiftQuest2",
+            "IrisMarriageGiftQuest3",
+            "IrisMarriageGiftQuest4",
+            "JunMarriageGiftrQuest1",
+            "JunMarriageGiftrQuest2",
+            "JunMarriageGiftrQuest3",
+            "JunMarriageGiftrQuest4",
+            "KaiMarriageGiftQuest1",
+            "KaiMarriageGiftQuest2",
+            "KaiMarriageGiftQuest3",
+            "KaiMarriageGiftQuest4",
+            "KarishMarriageGiftQuest1",
+            "KarishMarriageGiftQuest2",
+            "KarishMarriageGiftQuest3",
+            "KarishMarriageGiftQuest4",
+            "KittyMarriageGiftQuest1",
+            "KittyMarriageGiftQuest2",
+            "KittyMarriageGiftQuest3",
+            "KittyMarriageGiftQuest4",
+            "LiamMarriageGiftQuest1",
+            "LiamMarriageGiftQuest2",
+            "LiamMarriageGiftQuest3",
+            "LiamMarriageGiftQuest4",
+            "LuciaMarriageGiftQuest1",
+            "LuciaMarriageGiftQuest2",
+            "LuciaMarriageGiftQuest3",
+            "LuciaMarriageGiftQuest4",
+            "LuciusMarriageGiftQuest1",
+            "LuciusMarriageGiftQuest2",
+            "LuciusMarriageGiftQuest3",
+            "LuciusMarriageGiftQuest4",
+            "LynnMarriageGiftQuest1",
+            "LynnMarriageGiftQuest2",
+            "LynnMarriageGiftQuest3",
+            "LynnMarriageGiftQuest4",
+            "MiyeonMarriageGiftQuest1",
+            "MiyeonMarriageGiftQuest2",
+            "MiyeonMarriageGiftQuest3",
+            "MiyeonMarriageGiftQuest4",
+            "NathanielMarriageGiftQuest1",
+            "NathanielMarriageGiftQuest2",
+            "NathanielMarriageGiftQuest3",
+            "NathanielMarriageGiftQuest4",
+            "ShangMarriageGiftQuest1",
+            "ShangMarriageGiftQuest2",
+            "ShangMarriageGiftQuest3",
+            "ShangMarriageGiftQuest4",
+            "TemplateMarriageGiftquest",
+            "VaanMarriageGiftQuest1",
+            "VaanMarriageGiftQuest2",
+            "VaanMarriageGiftQuest3",
+            "VaanMarriageGiftQuest4",
+            "ViviMarriageGiftQuest1",
+            "ViviMarriageGiftQuest2",
+            "ViviMarriageGiftQuest3",
+            "ViviMarriageGiftQuest4",
+            "WesleyMarriageGiftQuest1",
+            "WesleyMarriageGiftQuest2",
+            "WesleyMarriageGiftQuest3",
+            "WesleyMarriageGiftQuest4",
+            "WornhardtMarriageQuest1",
+            "WornhardtMarriageQuest2",
+            "WornhardtMarriageQuest3",
+            "WornhardtMarriageQuest4",
+            "XylaMarriageGiftQuest1",
+            "XylaMarriageGiftQuest2",
+            "XylaMarriageGiftQuest3",
+            "XylaMarriageGiftQuest4",
+            "ZariaMarriageGiftQuest1",
+            "ZariaMarriageGiftQuest2",
+            "ZariaMarriageGiftQuest3",
+            "ZariaMarriageGiftQuest4",
+            "IrissExperimentQuest",
+            "MailLynnsMailQuest",
+            "MermaidsRelicQuest",
+            "PetersBoostQuest",
+            "RaimisSnifflesQuest",
+            "SoldiersDietQuest",
+            "WhenLifeGivesYouLemonsQuest",
+            "TopisStudiesQuest",
+        };
         // ITEM ID's
         private static Dictionary<string, int> getAllIds()
         {
@@ -203,11 +945,19 @@ namespace CommandExtension
         private static Color Red = new Color(255, 0, 0);
         private static Color Green = new Color(0, 255, 0);
         private static Color Yellow = new Color(240, 240, 0);
+        public static ManualLogSource logger;
+        private static ConfigEntry<int> RetentionDays;
+        private static ConfigEntry<bool> DontDeleteBackups;
+        public static string lastBackupSavePath = "";
+        public static string lastSavePath = "";
         #endregion
 
         #region Awake() | Update() | OnGui()   -   BASE UNITY OBJECT METHODES
         private void Awake()
         {
+            CommandExtension.logger = this.Logger;
+            CommandExtension.RetentionDays = this.Config.Bind<int>("General.SaveBackups", "Days kept", 30, "Number of in-game days for which backups should be kept");
+            CommandExtension.DontDeleteBackups = this.Config.Bind<bool>("General.SaveBackups", "Do not delete backups", true,  "Do not delete backups");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
             Array.Sort(Commands, (x, y) => x.Name.CompareTo(y.Name));
         }
@@ -254,11 +1004,19 @@ namespace CommandExtension
         #region CheckIfCommand SendChatMessage
         public static bool CheckIfCommandSendChatMessage(string mayCommand)
         {
+            String originalMayCommand = mayCommand;
             mayCommand = mayCommand.ToLower();
             if ((mayCommand[0] != '!' || GetPlayerForCommand() == null) && !mayCommand.Contains(CmdName))
                 return false;
 
             string[] mayCommandParam = mayCommand.Split(' ');
+            string[] originalMayCommandParam = originalMayCommand.Split(' ');
+
+            if (mayCommandParam.Length > 0 && originalMayCommandParam.Length > 0)
+            {
+                originalMayCommandParam[0] = mayCommandParam[0];
+            }
+
             switch (mayCommandParam[0])
             {
                 case CmdHelp:
@@ -376,13 +1134,13 @@ namespace CommandExtension
                     return CommandFunction_ShowID();
 
                 case CmdRelationship:
-                    return CommandFunction_Relationship(mayCommandParam);
+                    return CommandFunction_Relationship(originalMayCommandParam);
 
                 case CmdUnMarry:
-                    return CommandFunction_UnMarry(mayCommandParam);
+                    return CommandFunction_UnMarry(originalMayCommandParam);
 
                 case CmdMarryNpc:
-                    return CommandFunction_MarryNPC(mayCommandParam);
+                    return CommandFunction_MarryNPC(originalMayCommandParam);
 
                 case CmdSetSeason:
                     return CommandFunction_SetSeason(mayCommandParam);
@@ -392,6 +1150,30 @@ namespace CommandExtension
 
                 case CmdIncDecYear:
                     return CommandFunction_IncDecYear(mayCommand);
+
+                case CmdQuestsList:
+                    return CommandFunction_QuestsList();
+
+                case CmdQuestLog:
+                    return CommandFunction_QuestsLog();
+
+                case CmdQuestAdd:
+                    return CommandFunction_QuestAdd(originalMayCommandParam);
+
+                case CmdQuestRemove:
+                    return CommandFunction_QuestRemove(originalMayCommandParam);
+
+                case CmdSaveGame:
+                    return CommandFunction_SaveGame();
+
+                case CmdSleepSave:
+                    return CommandFunction_SleepSave();
+
+                case CmdBackupSaveGame:
+                    return CommandFunction_BackupSaveGame();
+
+                case CmdBackupSleepSave:
+                    return CommandFunction_BackupSleepSave();
 
                 // no valid command found
                 default:
@@ -835,6 +1617,29 @@ namespace CommandExtension
             CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
             return true;
         }
+
+        // SLEEP SAVE
+        private static bool CommandFunction_SleepSave()
+        {
+            GetPlayerForCommand().SkipSleep();
+            CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
+            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false, false);
+            CommandFunction_PrintToChat($"Game saved to: {CommandExtension.lastSavePath.ColorText(Color.white)}!".ColorText(Green));
+            return true;
+        }
+
+        // BACKUP SLEEP SAVE
+        private static bool CommandFunction_BackupSleepSave()
+        {
+            GetPlayerForCommand().SkipSleep();
+            CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
+            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(true, false);
+            CommandFunction_PrintToChat($"Game backup saved to: {CommandExtension.lastBackupSavePath.ColorText(Color.white)}!".ColorText(Green));
+            return true;
+        }
+
         // PRINT ID ON HOVER
         private static bool CommandFunction_PrintItemIdOnHover()
         {
@@ -1241,17 +2046,17 @@ namespace CommandExtension
         {
             if (mayCmdParam.Length >= 2)
             {
-                string name = FirstCharToUpper(mayCmdParam[1]);
-                bool all = mayCmdParam[1] == "all";
+                string name = mayCmdParam[1];
+                bool all = name.ToLower() == "all";
                 NPCAI[] npcs = FindObjectsOfType<NPCAI>();
                 foreach (NPCAI npcai in npcs)
                 {
-                    string npcName = _GetNpcName(npcai);
-                    if (npcName == null || !SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
+                    string npcName = npcai.OriginalName;
+                    if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
                     {
                         continue;
                     }
-                    if (all || npcName == name)
+                    if (all || npcName.ToLower() == name.ToLower())
                     {
                         npcai.MarryPlayer();
                         string progressStringCharacter = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
@@ -1283,7 +2088,7 @@ namespace CommandExtension
             {
                 float value;
                 string name = mayCmdParam[1];
-                bool all = mayCmdParam[1] == "all";
+                bool all = name.ToLower() == "all";
                 bool add = mayCmdParam.Length >= 4 && mayCmdParam[3] == "add";
                 if (float.TryParse(mayCmdParam[2], out value))
                 {
@@ -1291,23 +2096,28 @@ namespace CommandExtension
                     NPCAI[] npcs = FindObjectsOfType<NPCAI>();
                     foreach (NPCAI npc in npcs)
                     {
-                        if (all || npc.NPCName.ToLower() == name)
+                        string npcName = npc.OriginalName;
+                        if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
+                        {
+                            continue;
+                        }
+                        if (all || npcName.ToLower() == name.ToLower())
                         {
                             if (add)
                             {
                                 npc.AddRelationship(value);
                                 if (!all)
                                 {
-                                    CommandFunction_PrintToChat($"Relationship with {npc.NPCName.ColorText(Color.white)} is now {SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npc.NPCName].ToString().ColorText(Color.white)}!".ColorText(Green));
+                                    CommandFunction_PrintToChat($"Relationship with {npcName.ColorText(Color.white)} is now {SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npcName].ToString().ColorText(Color.white)}!".ColorText(Green));
                                     return true;
                                 }
                             }
                             else
                             {
-                                SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npc.NPCName] = value;
+                                SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npcName] = value;
                                 if (!all)
                                 {
-                                    CommandFunction_PrintToChat($"Relationship with {npc.NPCName.ColorText(Color.white)} set to {value.ToString().ColorText(Color.white)}!".ColorText(Green));
+                                    CommandFunction_PrintToChat($"Relationship with {npcName.ColorText(Color.white)} set to {value.ToString().ColorText(Color.white)}!".ColorText(Green));
                                     return true;
                                 }
                             }
@@ -1327,13 +2137,12 @@ namespace CommandExtension
         private static String _GetNpcName(NPCAI npcai)
         {
 
-            var matches = npcNameRegex.Matches(npcai.NPCName);
+            var matches = npcNameRegex.Matches(npcai.OriginalName);
             foreach (Match match in matches)
             {
                 return (String)match.Value;
             }
             return null;
-            
         }
 
         // MARRY NPC
@@ -1341,19 +2150,18 @@ namespace CommandExtension
         {
             if (mayCmdParam.Length >= 2)
             {
-                string name = FirstCharToUpper(mayCmdParam[1]);
-                bool all = mayCmdParam[1] == "all";
+                string name = mayCmdParam[1];
+                bool all = name.ToLower() == "all";
                 NPCAI[] npcs = FindObjectsOfType<NPCAI>();
                 foreach (NPCAI npcai in npcs)
                 {
-                    string npcName = _GetNpcName(npcai);
-                    if (npcName == null || !SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
+                    string npcName = npcai.OriginalName;
+                    if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
                     {
                         continue;
                     }
-                    if (all || npcName == name)
+                    if (all || npcName.ToLower() == name.ToLower())
                     {
-                        SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName);
                         if (SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npcName] < 100f)
                         {
                             SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npcName] = 100f;
@@ -1436,6 +2244,144 @@ namespace CommandExtension
             CommandFunction_PrintToChat($"{Commands[i].Name} {Commands[i].State.ToString().ColorText(flag ? Green : Red)}".ColorText(Yellow));
             return true;
         }
+
+        // QUESTS LIST
+        private static bool CommandFunction_QuestsList()
+        {
+            int questIds = 0;
+            CommandFunction_PrintToChat($"!---------------All quest-ids---------------!".ColorText(Green));
+            foreach (string quest in allQuestIds)
+            {
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green));
+                questIds++;
+            }
+            return true;
+        }
+
+        // QUESTS LOG
+        private static bool CommandFunction_QuestsLog()
+        {
+            Player.Instance.QuestList.ReloadQuestList();
+            List<String> questlog = Player.Instance.QuestList.questLog.Keys.ToList<string>();
+            int questIds = 0;
+            CommandFunction_PrintToChat($"!---------------Quest-log-ids---------------!".ColorText(Green));
+            foreach (string quest in questlog)
+            {
+                Player.Instance.QuestList.questLog.TryGetValue(quest, out QuestBundle value);
+                string questName = value.quest.questAsset.questName;
+                string keyQuestName = value.quest.questAsset.keyQuestName;
+                string questDesc = value.quest.questAsset.questDescription;
+                string keyQuestDesc = value.quest.questAsset.questDescription;
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green));
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestName: {questName.ColorText(Color.white)}!".ColorText(Green));
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, KeyQuestName: {keyQuestName.ColorText(Color.white)}!".ColorText(Green));
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestDescription: {questDesc.ColorText(Color.white)}!".ColorText(Green));
+                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, KeyQuestDescription: {keyQuestDesc.ColorText(Color.white)}!".ColorText(Green));
+                questIds++;
+            }
+            return true;
+        }
+
+        private static bool playerHaveQuest(string quest)
+        {
+            Player.Instance.QuestList.ReloadQuestList();
+            return Player.Instance.QuestList.questLog.ContainsKey(quest);
+        }
+
+        private static bool playerIsValidQuest(string quest)
+        {
+            return allQuestIds.Contains(quest);
+        }
+
+        // QUEST ADD
+        private static bool CommandFunction_QuestAdd(string[] mayCmdParam)
+        {
+            if (mayCmdParam.Length >= 2)
+            {
+                string quest = mayCmdParam[1];
+                if (!playerIsValidQuest(quest))
+                {
+                    CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} is not be valid!".ColorText(Green));
+                    return true;
+                }
+                if (!playerHaveQuest(quest))
+                {
+                    Player.Instance.QuestList.StartQuest(quest);
+                    bool added = playerHaveQuest(quest);
+                    if (added)
+                    {
+                        CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} added!".ColorText(Green));
+                    }
+                    else
+                    {
+                        CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} can not be added!".ColorText(Green));
+                    }
+                }
+                else
+                {
+                    CommandFunction_PrintToChat($"You have already the Quest: {quest.ColorText(Color.white)}!".ColorText(Green));
+                }
+            }
+            else
+            {
+                CommandFunction_PrintToChat($"wrong use of the command !addquest".ColorText(Red));
+            }
+            return true;
+        }
+
+        // QUEST REMOVE
+        private static bool CommandFunction_QuestRemove(string[] mayCmdParam)
+        {
+            if (mayCmdParam.Length >= 2)
+            {
+                string quest = mayCmdParam[1];
+                if (!playerIsValidQuest(quest))
+                {
+                    CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} is not be valid!".ColorText(Green));
+                    return true;
+                }
+                if (playerHaveQuest(quest))
+                {
+                    Player.Instance.QuestList.AbandonQuest(quest);
+                    bool removed = !playerHaveQuest(quest);
+                    if (removed)
+                    {
+                        CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} removed!".ColorText(Green));
+                    } else
+                    {
+                        CommandFunction_PrintToChat($"Quest: {quest.ColorText(Color.white)} can not be removed!".ColorText(Green));
+                    }
+                }
+                else
+                {
+                    CommandFunction_PrintToChat($"You don't have the Quest: {quest.ColorText(Color.white)}!".ColorText(Green));
+                }
+            } 
+            else
+            {
+                CommandFunction_PrintToChat($"wrong use of the command !removequest".ColorText(Red));
+            }
+            return true;
+        }
+
+        // BACKUP SAVE GAME
+        private static bool CommandFunction_BackupSaveGame()
+        {
+            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(true, false);
+            CommandFunction_PrintToChat($"Game backup saved to: {CommandExtension.lastBackupSavePath.ColorText(Color.white)}!".ColorText(Green));
+            return true;
+        }
+
+        // SAVE GAME
+        private static bool CommandFunction_SaveGame()
+        {
+            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false, false);
+            CommandFunction_PrintToChat($"Game saved to: {CommandExtension.lastSavePath.ColorText(Color.white)}!".ColorText(Green));
+            return true;
+        }
+
         #endregion
 
         // duplicated "command methodes" (no functions) to use the in-game COMMAND feature
@@ -1612,6 +2558,38 @@ namespace CommandExtension
         private static void fm42(string INFO_toggleGameCheats)
         {
         }
+        [Command("listquests", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm43(string INFO_listQuestIDs)
+        {
+        }
+        [Command("questlog", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm44(string INFO_listQuestLogIDs)
+        {
+        }
+        [Command("addquest", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm45(string questID)
+        {
+        }
+        [Command("removequest", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm46(string questID)
+        {
+        }
+        [Command("save", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm47(string INFO_saveTheGame)
+        {
+        }
+        [Command("sleepsave", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm48(string INFO_sleepAndSaveTheGame)
+        {
+        }
+        [Command("backupsave", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm49(string INFO_saveTheGameBackup)
+        {
+        }
+        [Command("backupsleepsave", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm50(string INFO_sleepAndSaveTheGameBackup)
+        {
+        }
         #endregion
         #endregion
 
@@ -1630,6 +2608,22 @@ namespace CommandExtension
         }
         #endregion
         // auto fill museum
+        private static void AddItemToHungryMonster(HungryMonster monster, int amount, SlotItemData slotItemData, bool specialItem, bool superSecretCheck, ItemData i)
+        {
+            monster.sellingInventory.AddItem(i.GetItem(), amount, slotItemData.slotNumber, specialItem, superSecretCheck);
+        }
+
+        private static void AddItemToHungryMonsterTransfered(HungryMonster monster, int amount, SlotItemData slotItemData, bool specialItem, bool superSecretCheck, ItemData i)
+        {
+            monster.sellingInventory.AddItem(i.GetItem(), amount, slotItemData.slotNumber, specialItem, superSecretCheck);
+            CommandFunction_PrintToChat($"transferred: {amount.ToString().ColorText(Color.white)} * {i.name.ColorText(Color.white)}");
+        }
+
+        private static void ShowItemFailed()
+        {
+            return;
+        }
+
         #region Patch_HungryMonster.SetMeta
         [HarmonyPatch(typeof(HungryMonster))]
         [HarmonyPatch("SetMeta")]
@@ -1637,6 +2631,8 @@ namespace CommandExtension
         {
             static void Postfix(HungryMonster __instance, DecorationPositionData decorationData)
             {
+                Action<ItemData> itemDataFunc = null;
+                Action itemFailed = () => ShowItemFailed();
                 if (__instance.bundleType == BundleType.MuseumBundle)
                 {
                     if (Commands[Array.FindIndex(Commands, command => command.Name == CmdCheatFillMuseum)].State == CommandState.Activated
@@ -1655,13 +2651,18 @@ namespace CommandExtension
                                 {
                                     if (slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept)
                                         continue;
-                                   // if (!monster.name.ToLower().Contains("money"))
-                                   //     monster.sellingInventory.AddItem(ItemDatabaseWrapper.ItemDatabase.GetItemData(slotItemData.slot.itemToAccept.id).GetItem(), slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false);
+                                    if (!monster.name.ToLower().Contains("money"))
+                                    {
+                                        itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, true, i);
+                                        Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                                    }
                                     else if (monster.name.ToLower().Contains("money"))
                                     {
                                         if (slotItemData.slot.itemToAccept.id >= 60000 && slotItemData.slot.itemToAccept.id <= 60002)
-                                            monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
-                                        //if (slotItemData.slot.itemToAccept.id == 60000)
+                                        {
+                                            itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, false, i);
+                                            Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                                        }//if (slotItemData.slot.itemToAccept.id == 60000)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
                                         //else if (slotItemData.slot.itemToAccept.id == 60001)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
@@ -1685,8 +2686,8 @@ namespace CommandExtension
                                             if (pItem.id == slotItemData.slot.itemToAccept.id)
                                             {
                                                 int amount = Math.Min(pItem.amount, slotItemData.slot.numberOfItemToAccept - slotItemData.amount);
-                                               // monster.sellingInventory.AddItem(ItemDatabaseWrapper.ItemDatabase.GetItemData(slotItemData.slot.itemToAccept.id).GetItem(), amount, slotItemData.slotNumber, false);
-                                               // CommandFunction_PrintToChat($"transferred: {amount.ToString().ColorText(Color.white)} * {ItemDatabaseWrapper.ItemDatabase.GetItemData(pItem.id).name.ColorText(Color.white)}");
+                                                itemDataFunc = (i) => AddItemToHungryMonsterTransfered(monster, amount, slotItemData, false, true, i);
+                                                Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
                                                 player.Inventory.RemoveItem(pItem.item, amount);
                                                 monster.UpdateFullness();
                                             }
@@ -1885,6 +2886,130 @@ namespace CommandExtension
             {
                 if (debug)
                     __result = __instance.id.ToString().ColorText(Color.magenta) + "\"\n\"";
+            }
+        }
+        #endregion
+
+        // WriteCharacterToFile
+        #region Patch_GameSave.WriteCharacterToFile
+        [HarmonyPatch(typeof(GameSave), nameof(GameSave.WriteCharacterToFile))]
+        class Patch_GameSaveWriteCharacterToFile
+        {
+            public static void Postfix(
+                bool backup,
+                bool newCharacter,
+                GameSave __instance,
+                string ___characterFolder)
+            {
+                bool backupFalse = false;
+                CommandExtension.logger.LogDebug((object)("Execute WriteCharacterToFile!"));
+                Debug.Log((object)"Execute WriteCharacterToFile");
+                try
+                {
+                    object obj = typeof(GameSave).GetField("fileExtension", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue((object)null);
+                    if (((!backup ? 1 : (obj == null ? 1 : 0)) | (newCharacter ? 1 : 0)) != 0)
+                        backupFalse = false;
+                    GameSaveData gameSaveData = (GameSaveData)__instance.GetType().GetMethod("CopySaveData", BindingFlags.Instance | BindingFlags.NonPublic).Invoke((object)__instance, new object[1]
+                    {
+                        (object) __instance.CurrentSave
+                    });
+                    Debug.Log((object)"TestCommandExtension: all ok until here!");
+                    backupFalse = !backupFalse || !backup;
+                    if (backupFalse)
+                    {
+                        Debug.Log((object)"Test5a");
+                        if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/"))
+                            Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/");
+                        if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/"))
+                            Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/");
+                        Debug.Log((object)"Test5b");
+                        string str_ = __instance.CurrentSave.characterData.characterIndex == (byte)0 ? "" : __instance.CurrentSave.characterData.characterIndex.ToString();
+                        string path;
+                        if (backup)
+                            path = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                        else
+                            path = Application.persistentDataPath + "/" + ___characterFolder + "/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                        Debug.Log((object)"Test5c");
+                        if (newCharacter)
+                        {
+                            int num;
+                            object[] objArray;
+                            for (num = 0; File.Exists(path) && num < (int)byte.MaxValue; path = string.Concat(objArray))
+                            {
+                                ++num;
+                                objArray = new object[7]
+                                {
+                                    (object) Application.persistentDataPath,
+                                    (object) "/",
+                                    (object) ___characterFolder,
+                                    (object) "/",
+                                    (object) __instance.CurrentSave.characterData.characterName,
+                                    (object) num,
+                                    (object) ".save"
+                                };
+                            }
+                            gameSaveData.characterData.characterIndex = (byte)num;
+                            __instance.CurrentSave.characterData.characterIndex = (byte)num;
+                        }
+                        Debug.Log((object)"Test5d");
+                        byte[] bytes1 = ZeroFormatterSerializer.Serialize<GameSaveData>(gameSaveData);
+                        Debug.Log((object)"Test5e");
+                        byte[] bytes2 = GameSave.CompressBytes(bytes1);
+                        Debug.Log((object)"Test5f");
+                        Debug.Log((object)("Write to file " + (object)gameSaveData.characterData.characterIndex));
+                        File.WriteAllBytes(path, bytes2);
+                        Debug.Log((object)"Test5g");
+                        CommandExtension.logger.LogDebug((object)("Writing save to: " + path));
+                        CommandExtension.lastSavePath = path;
+                        return;
+                    } 
+                    int num1 = DayCycle.DayFromTime(gameSaveData.worldData.time);
+                    if (gameSaveData.worldData.time.Hour < 6)
+                        --num1;
+                    int num9 = gameSaveData.worldData.time.Minute; 
+                    int num10 = gameSaveData.worldData.time.Second;
+                    string str = gameSaveData.characterData.characterIndex == (byte)0 ? "" : gameSaveData.characterData.characterIndex.ToString();
+                    string path1 = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/CommandExtension/" + Regex.Replace(gameSaveData.characterData.characterName, "<|>|=|#", "") + str;
+                    if (!Directory.Exists(path1))
+                        Directory.CreateDirectory(path1);
+                    string path2 = path1 + "/day" + num1.ToString() + "." + num9.ToString() + "_" + num10.ToString() + "." + obj?.ToString();
+                    if (File.Exists(path2))
+                    {
+                        CommandExtension.lastBackupSavePath = path2;
+                        return;
+                    }
+                    CommandExtension.logger.LogDebug((object)("Writing backup to: " + path2));
+                    byte[] bytes = GameSave.CompressBytes(ZeroFormatterSerializer.Serialize<GameSaveData>(gameSaveData));
+                    File.WriteAllBytes(path2, bytes);
+                    CommandExtension.lastBackupSavePath = path2;
+                    foreach (string file in Directory.GetFiles(path1, "day*." + obj?.ToString(), SearchOption.TopDirectoryOnly))
+                    {
+                        if (CommandExtension.DontDeleteBackups.Value)
+                        {
+                            CommandExtension.logger.LogDebug((object)("Don't delete files!"));
+                            break;
+                        }
+                        Match match = Regex.Match(file, "day(\\d+)\\.");
+                        if (match.Success)
+                        {
+                            int num2 = int.Parse(match.Groups[1].Value);
+                            if (num2 != 0)
+                            {
+                                int num3 = num1 - num2;
+                                CommandExtension.logger.LogDebug((object)string.Format("Found backup from day {0} with path {1}, it's {2} days old", (object)num2, (object)file, (object)num3));
+                                if (num3 > CommandExtension.RetentionDays.Value)
+                                {
+                                    CommandExtension.logger.LogDebug((object)("Deleting " + file + " due to being too old"));
+                                    File.Delete(file);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CommandExtension.logger.LogError((object)string.Format("Plugin {0} error in WriteCharacterToFile: {1}", (object)"CommandExtension", (object)ex));
+                }
             }
         }
         #endregion

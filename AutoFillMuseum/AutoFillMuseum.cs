@@ -5,6 +5,11 @@ using System.Linq;
 using System.Reflection;
 using BepInEx.Configuration;
 using Wish;
+using PSS;
+using Sirenix.Serialization;
+using System.Security.Policy;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace AutoFillMuseum
 {
@@ -30,6 +35,22 @@ namespace AutoFillMuseum
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.PLUGIN_GUID);
         }
 
+        private static void GetItemData(HungryMonster __instance, Inventory playerInventory, SlotItemData pItem, SlotItemData slotItemData, int amountToTransfer, bool showNotification, ItemData i)
+        {
+            __instance.sellingInventory.AddItem(i.GetItem(), amountToTransfer, slotItemData.slotNumber, false);
+            playerInventory.RemoveItem(pItem.item, amountToTransfer);
+            __instance.UpdateFullness();
+            if (showNotification)
+            {
+                SingletonBehaviour<HelpTooltips>.Instance.SendNotification($"Added {i.name} to the museum!", $"Added {i.name} to the museum!" + (object)i.ID, (List<(Transform, Vector3, Direction)>)null, i.ID);
+            }
+        }
+
+        private static void ShowItemFailed()
+        {
+            return;
+        }
+
         [HarmonyPostfix]
         [HarmonyPatch(typeof(HungryMonster), nameof(HungryMonster.SetMeta))]
         private static void HungryMonster_SetMeta(HungryMonster __instance)
@@ -43,25 +64,26 @@ namespace AutoFillMuseum
 
             foreach (var slotItemData in __instance.sellingInventory.Items.Where(slotItemData => slotItemData.item != null && slotItemData.slot.numberOfItemToAccept != 0 && slotItemData.amount < slotItemData.slot.numberOfItemToAccept))
             {
-                //foreach (var pItem in playerInventory.Items)
-               // {
-                //    if (pItem.id != slotItemData.slot.itemToAccept.id) continue;
-                //    var amountToTransfer = Math.Min(pItem.amount, slotItemData.slot.numberOfItemToAccept - slotItemData.amount);
-                   // var itemData = ItemDatabase.GetItemData(slotItemData.slot.itemToAccept.id);
-             //       __instance.sellingInventory.AddItem(itemData.GetItem(), amountToTransfer, slotItemData.slotNumber, false);
-               //     playerInventory.RemoveItem(pItem.item, amountToTransfer);
-              //      __instance.UpdateFullness();
-               //     if (ShowNotifications.Value)
-                //    {
-//      Singlet//onBehaviour<NotificationStack>.Instance.SendNotification($"Added {itemData.name} to the museum!", itemData.id, amountToTransfer);
-                //    }
-              //  }
+                foreach (var pItem in playerInventory.Items)
+                {
+                    if (pItem.id != slotItemData.slot.itemToAccept.id) continue;
+                    var amountToTransfer = Math.Min(pItem.amount, slotItemData.slot.numberOfItemToAccept - slotItemData.amount);
+                    Action<ItemData> itemDataFunc = (i) => GetItemData(__instance, playerInventory, pItem, slotItemData, amountToTransfer, ShowNotifications.Value, i);
+                    Action itemFailed = () => ShowItemFailed();
+                    Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                }
+            }
+            MethodInfo mInfoMethod = null;
+            foreach (var vPodium in FindObjectsOfType<MuseumBundleVisual>())
+            {
+                mInfoMethod = vPodium.GetType().GetMethods().FirstOrDefault(method => method.Name == "OnSaveInventory" && method.GetParameters().Count() == 0);
+                break;
             }
 
-           // foreach (var vPodium in FindObjectsOfType<MuseumBundleVisual>())
-           // {
-             //   vPodium.OnSaveInventory();
-           // }
+            foreach (var vPodium in FindObjectsOfType<MuseumBundleVisual>())
+            {
+                mInfoMethod.Invoke(vPodium, null);
+            }
         }
     }
 }

@@ -41,8 +41,7 @@
     <Reference Include="KeepAlive">
       <HintPath>..\..\..\..\Libraries\KeepAlive.dll</HintPath>
     </Reference>
-    <Reference Include="PSS.Database, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="PSS.Database">
       <HintPath>..\..\..\..\Libraries\PSS.Database.dll</HintPath>
     </Reference>
     <Reference Include="QFSW.QC">
@@ -71,6 +70,10 @@
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
       <HintPath>..\..\..\..\Libraries\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
+    <Reference Include="ZeroFormatter, Version=1.6.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Libraries\ZeroFormatter.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
