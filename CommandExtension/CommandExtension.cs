@@ -1182,29 +1182,60 @@ namespace CommandExtension
         }
         #endregion
 
+        private static void sortItemAll(KeyValuePair<string, int> item, ItemData itemData)
+        {
+            ItemCategory itemCategory = itemData.category;
+            switch (itemCategory)
+            {
+                case ItemCategory.Furniture:
+                    categorizedItems["Furniture Items"].Add(item.Key, item.Value);
+                    break;
+
+                case ItemCategory.Equip:
+                    categorizedItems["Equipable Items"].Add(item.Key, item.Value);
+                    break;
+
+                case ItemCategory.Quest:
+                    categorizedItems["Quest Items"].Add(item.Key, item.Value);
+                    break;
+
+                case ItemCategory.Craftable:
+                    categorizedItems["Craftable Items"].Add(item.Key, item.Value);
+                    break;
+
+                case ItemCategory.Monster:
+                    categorizedItems["Monster Items"].Add(item.Key, item.Value);
+                    break;
+
+                case ItemCategory.Use:
+                    categorizedItems["Useable Items"].Add(item.Key, item.Value);
+                    break;
+
+                default:
+                    categorizedItems["Other Items"].Add(item.Key, item.Value);
+                    break;
+
+            }
+        }
+
+        private static void sortItemFailed()
+        {
+
+        }
+
         // Categorize all items
         #region Categorize 'ItemDatabaseWrapper.ItemDatabase.ids' into 'categorizedItems'
         private static bool CategorizeItemList()
         {
-           /* if (ItemDatabaseWrapper.ItemDatabase.ids == null || ItemDatabaseWrapper.ItemDatabase.ids.Count < 1)
+           if (allIds == null || allIds.Count < 1)
                    return false;
-               foreach (var item in allIds)
-               {
-                   if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Furniture)
-                       categorizedItems["Furniture Items"].Add(item.Key, item.Value);
-                   else if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Equip)
-                       categorizedItems["Equipable Items"].Add(item.Key, item.Value);
-                   else if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Quest)
-                       categorizedItems["Quest Items"].Add(item.Key, item.Value);
-                   else if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Craftable)
-                       categorizedItems["Craftable Items"].Add(item.Key, item.Value);
-                   else if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Monster)
-                       categorizedItems["Monster Items"].Add(item.Key, item.Value);
-                   else if (ItemDatabaseWrapper.ItemDatabase.GetItemData(item.Value).category == ItemCategory.Use)
-                       categorizedItems["Useable Items"].Add(item.Key, item.Value);
-                   else
-                       categorizedItems["Other Items"].Add(item.Key, item.Value);
-               }*/
+            Action<ItemData> itemDataFunc = null;
+            Action itemFailed = () => sortItemFailed();
+            foreach (var item in allIds)
+            {
+                itemDataFunc = (i) => sortItemAll(item, i);
+                Database.GetData<ItemData>(item.Value, itemDataFunc, itemFailed);
+            }
             return true;
         }
         #endregion
@@ -1251,6 +1282,60 @@ namespace CommandExtension
                 }
             }
             return true;
+        }
+
+        private static void printItemIds(char s)
+        {
+            void sortItemFurniture(KeyValuePair<string, int> item, ItemData itemData)
+            {
+                ItemCategory itemCategory = itemData.category;
+                switch (itemCategory)
+                {
+                    case ItemCategory.Furniture:
+                        CommandFunction_PrintToChat($"{item.Key} : {item.Value}");
+                        break;
+                }
+            };
+
+            void sortItemQuest(KeyValuePair<string,int> item, ItemData itemData)
+            {
+                ItemCategory itemCategory = itemData.category;
+                switch (itemCategory)
+                {
+                    case ItemCategory.Quest:
+                        CommandFunction_PrintToChat($"{item.Key} : {item.Value}");
+                        break;
+
+                }
+            };
+
+            void sortItemFailed()
+            {
+
+            };
+
+            if (allIds == null || allIds.Count < 1)
+               return;
+            
+            Action<ItemData> itemDataFunc = null;
+            Action itemFailed = () => sortItemFailed();
+            switch (s)
+            {
+                case 'f':
+                    foreach (var item in allIds)
+                    {
+                        itemDataFunc = (i) => sortItemFurniture(item, i);
+                        Database.GetData<ItemData>(item.Value, itemDataFunc, itemFailed);
+                    }
+                break;
+                case 'q':
+                    foreach (var item in allIds)
+                    {
+                        itemDataFunc = (i) => sortItemQuest(item, i);
+                        Database.GetData<ItemData>(item.Value, itemDataFunc, itemFailed);
+                    }
+                break;
+            }
         }
         // PRINT SPECIAL ITEMS
         private static bool CommandFunction_PrintItemIds(string[] mayCommandParam)
@@ -1309,15 +1394,11 @@ namespace CommandExtension
                     break;
                 case 'f':
                     CommandFunction_PrintToChat("[FURNITURE-ITEM-IDs]".ColorText(Color.black));
-                    //foreach (KeyValuePair<string, int> id in allIds)
-                     //   if (ItemDatabaseWrapper.ItemDatabase.GetItemData(id.Value).category == ItemCategory.Furniture)
-                      //      CommandFunction_PrintToChat($"{id.Key} : {id.Value}");
+                    printItemIds('f');
                     break;
                 case 'q':
                     CommandFunction_PrintToChat("[QUEST-ITEM-IDs]".ColorText(Color.black));
-                   // foreach (KeyValuePair<string, int> id in allIds)
-                    //    if (ItemDatabaseWrapper.ItemDatabase.GetItemData(id.Value).category == ItemCategory.Quest)
-                    //        CommandFunction_PrintToChat($"{id.Key} : {id.Value}");
+                    printItemIds('q');
                     break;
                 default:
                     CommandFunction_PrintToChat(CmdPrintItemIds + " [xp|money|all|bonus|furniture|quest]".ColorText(Red));
@@ -1547,13 +1628,23 @@ namespace CommandExtension
         }
         // GIVE ITEM BY ID/NAME 
         private static bool CommandFunction_ShowItemByName(string[] mayCommandParam)
-        {   
+        {
             if (mayCommandParam.Length >= 2)
             {
-				string stringItemId = mayCommandParam[1].ToLower();
-				CommandFunction_PrintToChat($"Please use: https://kryzik.github.io/sun-haven-items/?search={stringItemId.ColorText(Color.white)}".ColorText(Red));
-            } 
-			else 
+                List<string> items = new List<string>();
+                foreach (KeyValuePair<string, int> id in allIds)
+                {
+                    if (id.Key.ToLower().Contains(mayCommandParam[1]))
+                        items.Add(id.Key.ColorText(Color.white) + " : ".ColorText(Color.black) + id.Value.ToString().ColorText(Color.white));
+                }
+                if (items.Count >= 1)
+                {
+                    CommandFunction_PrintToChat("[FOUND ITEMS]".ColorText(Color.black));
+                    foreach (string ítem in items)
+                        CommandFunction_PrintToChat(ítem);
+                }
+            }
+            else 
 			{
 				CommandFunction_PrintToChat($"wrong use of !showitembyname".ColorText(Red));
 			}	
@@ -2857,21 +2948,32 @@ namespace CommandExtension
                 foreach (Type itemType in itemTypes)
                     yield return AccessTools.Method(itemType, "GetToolTip", new[] { typeof(Tooltip), typeof(int), typeof(bool) });
             }
+
+            static void PrintOnHover(int id, bool printOnHover, bool appendItemDescWithId, ItemData itemData)
+            {
+                if (printOnHover)
+                    CommandFunction_PrintToChat($"{id} : {itemData.name}");
+                string text = "ID: ".ColorText(Color.magenta) + id.ToString().ColorText(Color.magenta) + "\"\n\"";
+                if (appendItemDescWithId)
+                {
+                   if (!itemData.description.Contains(text))
+                      itemData.description = text + itemData.description;
+                }
+                else if (itemData.description.Contains(text))
+                  itemData.description = itemData.description.Replace(text, "");
+            }
+
+            static void PrintOnFailed()
+            {
+                return;
+            }
+
             static void Prefix(Item __instance)
             {
                 int id = __instance.ID();
-               // if (printOnHover)
-                //    CommandFunction_PrintToChat($"{id} : {ItemDatabaseWrapper.ItemDatabase.GetItemData(id).name}");
-                string text = "ID: ".ColorText(Color.magenta) + id.ToString().ColorText(Color.magenta) + "\"\n\"";
-                //ItemData itemData = ItemDatabaseWrapper.ItemDatabase.GetItemData(id);
-               // if (appendItemDescWithId)
-                //{
-                 //   if (!itemData.description.Contains(text))
-                  //      itemData.description = text + itemData.description;
-                //}
-                //else if (itemData.description.Contains(text))
-                  //  itemData.description = itemData.description.Replace(text, "");
-
+                Action<ItemData> itemDataFunc = (itemData) => PrintOnHover(id, printOnHover, appendItemDescWithId, itemData);
+                Action itemFailed = () => PrintOnFailed();
+                Database.GetData<ItemData>(id, itemDataFunc, itemFailed);
             }
         }
         #endregion
@@ -2890,6 +2992,28 @@ namespace CommandExtension
         }
         #endregion
 
+        private static string getSavePath(
+                bool backup,
+                GameSave __instance,
+                string ___characterFolder)
+        {
+                byte characterIndex = __instance.CurrentSave.characterData.characterIndex;
+                byte zero = (byte)0;
+                string path = "";
+                for (byte i = characterIndex; i < 255; i++)
+                {
+                    string str_ = characterIndex == zero ? "" : characterIndex.ToString();
+                    if (backup)
+                        path = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                    else
+                        path = Application.persistentDataPath + "/" + ___characterFolder + "/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                    if (File.Exists(path))
+                    {
+                        continue;
+                    }
+                }
+                return path;
+        }
         // WriteCharacterToFile
         #region Patch_GameSave.WriteCharacterToFile
         [HarmonyPatch(typeof(GameSave), nameof(GameSave.WriteCharacterToFile))]
@@ -2906,6 +3030,12 @@ namespace CommandExtension
                 Debug.Log((object)"Execute WriteCharacterToFile");
                 try
                 {
+                    Debug.Log((object)"TestCommandExtension: noBackup = true");
+                    Debug.Log((object)"Test5a");
+                    if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/"))
+                        Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/");
+                    if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/"))
+                        Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/");
                     object obj = typeof(GameSave).GetField("fileExtension", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue((object)null);
                     if (!backup)
                     {
@@ -2928,21 +3058,12 @@ namespace CommandExtension
                     {
                         Debug.Log((object)"TestCommandExtension: can not find fileExtension");
                     }
+                    byte characterIndex = __instance.CurrentSave.characterData.characterIndex;
+                    byte zero = (byte)0;
                     if (noBackup)
                     {
-                        Debug.Log((object)"TestCommandExtension: noBackup = true");
-                        Debug.Log((object)"Test5a");
-                        if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/"))
-                            Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/");
-                        if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/"))
-                            Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/");
                         Debug.Log((object)"Test5b");
-                        string str_ = __instance.CurrentSave.characterData.characterIndex == (byte)0 ? "" : __instance.CurrentSave.characterData.characterIndex.ToString();
-                        string path;
-                        if (backup)
-                            path = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
-                        else
-                            path = Application.persistentDataPath + "/" + ___characterFolder + "/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                        string path = getSavePath(backup, __instance, ___characterFolder);
                         Debug.Log((object)"Test5c");
                         if (newCharacter)
                         {
