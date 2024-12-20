@@ -2901,22 +2901,36 @@ namespace CommandExtension
                 GameSave __instance,
                 string ___characterFolder)
             {
-                bool backupFalse = false;
+                bool noBackup = false;
                 CommandExtension.logger.LogDebug((object)("Execute WriteCharacterToFile!"));
                 Debug.Log((object)"Execute WriteCharacterToFile");
                 try
                 {
                     object obj = typeof(GameSave).GetField("fileExtension", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue((object)null);
-                    if (((!backup ? 1 : (obj == null ? 1 : 0)) | (newCharacter ? 1 : 0)) != 0)
-                        backupFalse = false;
+                    if (!backup)
+                    {
+                        noBackup = true;
+                    }
+                    if (obj == null)
+                    {
+                        noBackup = true;
+                    }
+                    if (newCharacter)
+                    {
+                        noBackup = true;
+                    }
                     GameSaveData gameSaveData = (GameSaveData)__instance.GetType().GetMethod("CopySaveData", BindingFlags.Instance | BindingFlags.NonPublic).Invoke((object)__instance, new object[1]
                     {
                         (object) __instance.CurrentSave
                     });
                     Debug.Log((object)"TestCommandExtension: all ok until here!");
-                    backupFalse = !backupFalse || !backup;
-                    if (backupFalse)
+                    if (obj == null)
                     {
+                        Debug.Log((object)"TestCommandExtension: can not find fileExtension");
+                    }
+                    if (noBackup)
+                    {
+                        Debug.Log((object)"TestCommandExtension: noBackup = true");
                         Debug.Log((object)"Test5a");
                         if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/"))
                             Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/");
@@ -2968,11 +2982,19 @@ namespace CommandExtension
                         --num1;
                     int num9 = gameSaveData.worldData.time.Minute; 
                     int num10 = gameSaveData.worldData.time.Second;
+                    int num12 = gameSaveData.worldData.time.Year;
+                    int num13 = gameSaveData.worldData.time.Month;
+                    int num14 = gameSaveData.worldData.time.Hour;
                     string str = gameSaveData.characterData.characterIndex == (byte)0 ? "" : gameSaveData.characterData.characterIndex.ToString();
-                    string path1 = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/CommandExtension/" + Regex.Replace(gameSaveData.characterData.characterName, "<|>|=|#", "") + str;
+                    string path1 = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + Regex.Replace(gameSaveData.characterData.characterName, "<|>|=|#", "") + str;
                     if (!Directory.Exists(path1))
+                    {
                         Directory.CreateDirectory(path1);
-                    string path2 = path1 + "/day" + num1.ToString() + "." + num9.ToString() + "_" + num10.ToString() + "." + obj?.ToString();
+                    }
+                    string path2 = path1 + "_year_" + num12.ToString() + "_month_" + num13.ToString()  + "_day_" + num1.ToString() + "_hour_" + num14.ToString() + "_min_" + num9.ToString() + "_sec_" + num10.ToString() + "." + obj?.ToString();
+                    Debug.Log((object)"Path2");
+                    Debug.Log((object)path2);
+                    CommandExtension.logger.LogDebug((object)(path2));
                     if (File.Exists(path2))
                     {
                         CommandExtension.lastBackupSavePath = path2;
