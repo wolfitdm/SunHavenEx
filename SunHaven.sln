@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoFillMuseum", "AutoFillM
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnlimitedSkillPoints", "UnlimitedSkillPoints\UnlimitedSkillPoints.csproj", "{ED882083-9A94-4BFF-A2A3-6EA71AC455CB}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Polygamy", "Polygamy\Polygamy.csproj", "{35ABF7EA-E6CE-4866-A08C-E03B8B6FEB7D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BreakableHeavystoneAndHardwood", "BreakableHeavystoneAndHardwood\BreakableHeavystoneAndHardwood.csproj", "{02DB5B52-C9E8-43C4-8621-78EC2D4665BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
