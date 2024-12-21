@@ -24,13 +24,13 @@
 
   <ItemGroup>
     <Reference Include="SunHaven.core">
-      <HintPath>lib\SunHaven.Core.dll</HintPath>
+      <HintPath>..\..\..\..\Libraries\SunHaven.Core.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>lib\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libraries\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>lib\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\Libraries\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
