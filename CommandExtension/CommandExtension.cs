@@ -1913,19 +1913,29 @@ namespace CommandExtension
         // AUTO-FILL MUSEUM
         private static bool CommandFunction_AutoFillMuseum()
         {
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here");
             int i = Array.FindIndex(Commands, command => command.Name == CmdAutoFillMuseum);
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 2");
             Commands[i].State = Commands[i].State == CommandState.Activated ? CommandState.Deactivated : CommandState.Activated;
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 3");
             bool flag = Commands[i].State == CommandState.Activated;
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 4");
             CommandFunction_PrintToChat($"{Commands[i].Name} {Commands[i].State.ToString().ColorText(flag ? Green : Red)}".ColorText(Yellow));
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 5");
             return true;
         }
         // CHEAT-FILL MUSEUM
         private static bool CommandFunction_CheatFillMuseum()
         {
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 6");
             int i = Array.FindIndex(Commands, command => command.Name == CmdCheatFillMuseum);
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 7");
             Commands[i].State = Commands[i].State == CommandState.Activated ? CommandState.Deactivated : CommandState.Activated;
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 8");
             bool flag = Commands[i].State == CommandState.Activated;
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 9");
             CommandFunction_PrintToChat($"{Commands[i].Name} {Commands[i].State.ToString().ColorText(flag ? Green : Red)}".ColorText(Yellow));
+            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 10");
             return true;
         }
         // TELEPORT
@@ -2722,37 +2732,60 @@ namespace CommandExtension
         {
             static void Postfix(HungryMonster __instance, DecorationPositionData decorationData)
             {
+                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x1");
                 Action<ItemData> itemDataFunc = null;
+                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x2");
                 Action itemFailed = () => ShowItemFailed();
+                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x3");
                 if (__instance.bundleType == BundleType.MuseumBundle)
                 {
+                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x4");
                     if (Commands[Array.FindIndex(Commands, command => command.Name == CmdCheatFillMuseum)].State == CommandState.Activated
                     ||
                     Commands[Array.FindIndex(Commands, command => command.Name == CmdAutoFillMuseum)].State == CommandState.Activated)
                     {
+                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x5");
                         Player player = GetPlayerForCommand();
                         if (player == null)
+                        {
+                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x6");
                             return;
+                        }
                         HungryMonster monster = __instance;
+                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x7");
                         if (monster.sellingInventory != null) // && monster.sellingInventory.Items != null && monster.sellingInventory.Items.Count >= 1
                         {
+                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x8");
                             if (Commands.Any(command => command.Name == CmdCheatFillMuseum && command.State == CommandState.Activated))
                             {
+                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x9");
                                 foreach (SlotItemData slotItemData in monster.sellingInventory.Items)
                                 {
-                                    if (slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept)
+                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x10");
+                                    if (slotItemData.slot == null || slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept || (slotItemData.slot.serializedItemToAccept == null && slotItemData.slot.itemToAccept == null) )
+                                    {
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x11");
                                         continue;
+                                    }
+                                    int idToAccept = slotItemData.slot.itemToAccept != null ? slotItemData.slot.itemToAccept.id : 0;
+                                    idToAccept = idToAccept == 0 && slotItemData.slot.serializedItemToAccept != null ? slotItemData.slot.serializedItemToAccept.id : 0;
                                     if (!monster.name.ToLower().Contains("money"))
                                     {
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x12");
                                         itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, true, i);
-                                        Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x13");
+                                        Database.GetData<ItemData>(slotItemData.slot.serializedItemToAccept.id, itemDataFunc, itemFailed);
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x14");
                                     }
                                     else if (monster.name.ToLower().Contains("money"))
                                     {
-                                        if (slotItemData.slot.itemToAccept.id >= 60000 && slotItemData.slot.itemToAccept.id <= 60002)
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x15");
+                                        if (idToAccept >= 60000 && idToAccept <= 60002)
                                         {
                                             itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, false, i);
-                                            Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x16");
+                                            Database.GetData<ItemData>(idToAccept, itemDataFunc, itemFailed);
+                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x17");
                                         }//if (slotItemData.slot.itemToAccept.id == 60000)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
                                         //else if (slotItemData.slot.itemToAccept.id == 60001)
@@ -2760,36 +2793,55 @@ namespace CommandExtension
                                         //else if (slotItemData.slot.itemToAccept.id == 60002)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
                                     }
+                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x18");
                                     monster.UpdateFullness();
                                 }
                             }
                             else
                             {
+                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x19");
                                 foreach (SlotItemData slotItemData in monster.sellingInventory.Items)
                                 {
+                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x20");
                                     if (!monster.name.ToLower().Contains("money") && slotItemData.item != null && player.Inventory != null)
                                     {
-                                        if (slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept)
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x21");
+                                        if (slotItemData.slot == null || slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept || (slotItemData.slot.serializedItemToAccept == null && slotItemData.slot.itemToAccept == null))
+                                        {
+                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x22");
                                             continue;
+                                        }
+                                        int idToAccept = slotItemData.slot.itemToAccept != null ? slotItemData.slot.itemToAccept.id : 0;
+                                        idToAccept = idToAccept == 0 && slotItemData.slot.serializedItemToAccept != null ? slotItemData.slot.serializedItemToAccept.id : 0;
                                         Inventory pInventory = player.Inventory;
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x23");
                                         foreach (var pItem in pInventory.Items)
                                         {
-                                            if (pItem.id == slotItemData.slot.itemToAccept.id)
+                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x24");
+                                            if (pItem.id == idToAccept)
                                             {
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x25");
                                                 int amount = Math.Min(pItem.amount, slotItemData.slot.numberOfItemToAccept - slotItemData.amount);
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x26");
                                                 itemDataFunc = (i) => AddItemToHungryMonsterTransfered(monster, amount, slotItemData, false, true, i);
-                                                Database.GetData<ItemData>(slotItemData.slot.itemToAccept.id, itemDataFunc, itemFailed);
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x27");
+                                                Database.GetData<ItemData>(idToAccept, itemDataFunc, itemFailed);
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x28");
                                                 player.Inventory.RemoveItem(pItem.item, amount);
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x29");
                                                 monster.UpdateFullness();
+                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x30");
                                             }
                                         }
-
+                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x31");
                                     }
                                 }
                             }
 
                         }
+                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x32");
                         Array.ForEach(FindObjectsOfType<MuseumBundleVisual>(), vPodium => typeof(MuseumBundleVisual).GetMethod("OnSaveInventory", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(vPodium, null));
+                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x33");
                     }
                 }
 
