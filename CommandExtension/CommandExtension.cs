@@ -19,6 +19,7 @@ using KeepAlive;
 using BepInEx.Logging;
 using BepInEx.Configuration;
 using ZeroFormatter;
+using TinyJson;
 
 namespace CommandExtension
 {
@@ -97,6 +98,10 @@ namespace CommandExtension
         public const string CmdSleepSave = CmdPrefix + "sleepsave";
         public const string CmdBackupSaveGame = CmdPrefix + "backupsave";
         public const string CmdBackupSleepSave = CmdPrefix + "backupsleepsave";
+        public const string CmdChristmas = CmdPrefix + "christmas";
+        public const string CmdSetTp = CmdPrefix + "settp";
+        public const string CmdGetTp = CmdPrefix + "gettp";
+        public const string CmdListTp = CmdPrefix + "listtp";
         public enum CommandState { None, Activated, Deactivated }
         // COMMAND CLASS
         public class Command
@@ -166,6 +171,10 @@ namespace CommandExtension
             new Command(CmdSleepSave,               "Sleep and save the game",                                                  CommandState.None),
             new Command(CmdBackupSaveGame,          "Save the game (backup)",                                                   CommandState.None),
             new Command(CmdBackupSleepSave,         "Sleep and save the game (backup)",                                         CommandState.None),
+            new Command(CmdChristmas,               "Gives you a random item! Merry christmas!",                                CommandState.None),
+            new Command(CmdSetTp,                   "Set a tp point on your location!",                                         CommandState.None),
+            new Command(CmdGetTp,                   "Teleport to a setted tp point!",                                           CommandState.None),
+            new Command(CmdListTp,                  "List your tp points!",                                                     CommandState.None),
         };
         #endregion
 
@@ -911,8 +920,348 @@ namespace CommandExtension
                 return new HashSet<int>();
             }
         }
-        private static Dictionary<string, int> allIds = getAllIds();
-        private static HashSet<int> validIDs = getValidIds();
+
+        private static List<int> getAllIdsList(Dictionary<string,int> dict)
+        {
+            List<int> allItems = new List<int>();
+            if (dict != null && dict.Count > 0)
+            {
+                allItems.AddRange(dict.Values);
+            }
+            return allItems;
+        }
+
+        private static readonly DateTime Jan1st1970 = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        private static long CurrentTimeMillis()
+        {
+            return (long)(DateTime.UtcNow - Jan1st1970).TotalMilliseconds;
+        }
+
+        private static int CurrentTimeSeconds()
+        {
+            return (int)((long)(CurrentTimeMillis() / 1000));
+        }
+        private static System.Random getRandom()
+        {
+            try
+            {
+                System.Random rand1 = new System.Random(CurrentTimeSeconds());
+                return rand1;
+            } catch(Exception ex) {
+                return null;
+            }
+        }
+   
+        private static bool testTpPoint(string scene)
+        {
+            if (scene == "withergatefarm")
+            {
+                return false;
+            }
+            else if (scene == "throneroom")
+            {
+                return false;
+            }
+            else if (scene == "nelvari")
+            {
+                return false;
+            }
+            else if (scene == "wishingwell")
+            {
+                return false;
+            }
+            else if (scene.Contains("altar"))
+            {
+                return false;
+            }
+            else if (scene.Contains("hospital"))
+            {
+                return false;
+            }
+            else if (scene.Contains("sunhaven"))
+            {
+                return false;
+            }
+            else if (scene.Contains("nelvarifarm"))
+            {
+                return false;
+            }
+            else if (scene.Contains("nelvarimine"))
+            {
+                return false;
+            }
+            else if (scene.Contains("nelvarihome"))
+            {
+                return false;
+            }
+            else if (scene.Contains("castle"))
+            {
+                return false;
+            }
+            else if (scene.Contains("withergatehome"))
+            {
+                return false;
+            }
+            else if (scene.Contains("grandtree"))
+            {
+                return false;
+            }
+            else if (scene.Contains("taxi"))
+            {
+                return false;
+            }
+            else if (scene == "dynus")
+            {
+                return false;
+            }
+            else if (scene == "sewer")
+            {
+                return false;
+            }
+            else if (scene == "nivara")
+            {
+                return false;
+            }
+            else if (scene.Contains("barrack"))
+            {
+                return false;
+            }
+            else if (scene.Contains("elios"))
+            {
+                return false;
+            }
+            else if (scene.Contains("dungeon"))
+            {
+                return false;
+            }
+            else if (scene.Contains("store"))
+            {
+                return false;
+            }
+            else if (scene.Contains("beach"))
+            {
+                return false;
+            }
+            else if (scene == "home" || scene.Contains("sunhavenhome") || scene == "farm")
+            {
+                return false;
+            }
+            else if (scene == "back")
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+        private static bool setTpPoint(string name)
+        {
+            if (!tpPointsLoaded)
+            {
+                loadTpPoints();
+                tpPointsLoaded = true;
+            }
+
+            try
+            {
+                name = name.ToLower();
+                if (!testTpPoint(name))
+                {
+                    return false;
+                }
+
+
+                if (tpPoints.ContainsKey(name))
+                {
+                    return false;
+                }
+
+                lastScene = ScenePortalManager.ActiveSceneName; lastLocation = Player.Instance.transform.position;
+                StringVector2 lastLoc = new StringVector2(lastLocation);
+                string lls = lastLoc.ToStringEx();
+                lls = lastScene + ";" + lls;
+                tpPoints.Add(name, lls);
+                bool set = saveTpPoints();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return false;
+            }
+        }
+        private static bool getTpPoint(string name)
+        {
+            if (!tpPointsLoaded)
+            {
+                loadTpPoints();
+                tpPointsLoaded = true;
+            }
+
+            try
+            {
+                name = name.ToLower();
+                if (!testTpPoint(name))
+                {
+                    return false;
+                }
+
+                if (!tpPoints.ContainsKey(name))
+                {
+                    return false;
+                }
+                if (!Regex.IsMatch(name, @"^[a-z]+$"))
+                {
+                    return false;
+                }
+                string ls = "";
+                bool g = tpPoints.TryGetValue(name, out ls);
+                if (!g)
+                {
+                    return false;
+                }
+                string[] gets = ls.Split(';');
+                if (gets.Length == 2)
+                {
+                    string sceneName = gets[0];
+                    StringVector2 xy = new StringVector2();
+                    Vector2 position = xy.FromStringExVector2(gets[1]);
+                    ScenePortalManager.Instance.ChangeScene(position, sceneName);
+                    return true;
+                }
+                return false;
+
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return false;
+            }
+        }
+
+        private static bool saveTpPoints()
+        {
+            try
+            {
+                string json = tpPoints.ToJson();
+                System.IO.File.WriteAllText(jsonTpPointsPath, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return false;
+            }
+        }
+
+        private static bool loadTpPoints()
+        {
+            if (!File.Exists(jsonTpPointsPath))
+            {
+                saveTpPoints();
+                return true;
+            }
+
+            Dictionary<string, string> oldTpPoints = tpPoints.ToDictionary(entry => entry.Key,
+                                                                           entry => entry.Value);
+            Dictionary<string,string> newTpPoints = new Dictionary<string,string>();
+            try
+            {
+                string fileJson = System.IO.File.ReadAllText(jsonTpPointsPath);
+                newTpPoints = fileJson.FromJson<Dictionary<string, string>>();
+            } catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+            try
+            {
+                foreach (var k in newTpPoints)
+                {
+                    if (oldTpPoints.ContainsKey(k.Key))
+                    {
+                        oldTpPoints.Remove(k.Key);
+                    }
+                    oldTpPoints.Add(k.Key, k.Value);
+                }
+                foreach (var k in oldTpPoints)
+                {
+                    if (tpPoints.ContainsKey(k.Key))
+                    {
+                        tpPoints.Remove(k.Key);
+                    }
+                    tpPoints.Add(k.Key, k.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+            return true;
+        }
+        private static Dictionary<string, int> allIds = null;
+        private static HashSet<int> validIDs = null;
+        private static List<int> allIdsList = null;
+        private static bool initAllIds = false;
+        private static bool initValidIDs = false;
+        private static bool initAllIdsList = false;
+        private static bool reinitAllIdsB = false;
+        private static bool tpPointsLoaded = false;
+        private static string jsonTpPointsPath = Path.Combine(Paths.ConfigPath, "commandextension_tp_points.json");
+        private static Dictionary<string, string> tpPoints = new Dictionary<string, string>();
+        private static System.Random random = getRandom();
+
+        private static void reinitAllIds()
+        {
+            if (reinitAllIdsB)
+            {
+                return;
+            }
+
+            if (!initAllIds && (allIds == null || allIds.Count == 0))
+            {
+                allIds = getAllIds();
+                initAllIds = allIds.Count > 0;
+            }
+            if (!initValidIDs && (validIDs == null || validIDs.Count == 0))
+            {
+                validIDs = getValidIds();
+                initValidIDs = validIDs.Count > 0;
+            }
+            if (!initAllIdsList && (allIdsList == null || allIdsList.Count == 0))
+            {
+                allIdsList = getAllIdsList(allIds);
+                initAllIdsList = allIdsList.Count > 0;
+            }
+            reinitAllIdsB = initAllIds && initValidIDs && initAllIdsList;
+           
+        }
+        private static int getRangeRandomItemPos()
+        {
+            if (allIdsList.Count > 0)
+            {
+                return random.Next(0, allIdsList.Count);
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        private static int getRangeRandomItemCount(int pos)
+        {
+            if (pos + 5 < allIdsList.Count)
+            {
+                return random.Next(1, 5);
+            } else
+            {
+                return 1;
+            }
+        }
+        private static int getRangeRandomItemAmount()
+        {
+            return random.Next(1, 10);
+        }
         private static Dictionary<string, int> moneyIds = new Dictionary<string, int>() { { "coins", 60000 }, { "orbs", 18010 }, { "tickets", 18011 } };
         private static Dictionary<string, int> xpIds = new Dictionary<string, int>() { { "combatexp", 60003 }, { "farmingexp", 60004 }, { "miningexp", 60006 }, { "explorationexp", 60005 }, { "fishingexp", 60008 } };
         private static Dictionary<string, int> bonusIds = new Dictionary<string, int>() { { "health", 60009 }, { "mana", 60007 } };
@@ -1175,6 +1524,18 @@ namespace CommandExtension
                 case CmdBackupSleepSave:
                     return CommandFunction_BackupSleepSave();
 
+                case CmdChristmas:
+                    return CommandFunction_Christmas();
+
+                case CmdSetTp:
+                    return CommandFunction_SetTp(mayCommandParam);
+
+                case CmdGetTp:
+                    return CommandFunction_GetTp(mayCommandParam);
+
+                case CmdListTp:
+                    return CommandFunction_ListTp();
+
                 // no valid command found
                 default:
                     return false;
@@ -1227,7 +1588,7 @@ namespace CommandExtension
         #region Categorize 'ItemDatabaseWrapper.ItemDatabase.ids' into 'categorizedItems'
         private static bool CategorizeItemList()
         {
-           if (allIds == null || allIds.Count < 1)
+            if (allIds == null || allIds.Count < 1)
                    return false;
             Action<ItemData> itemDataFunc = null;
             Action itemFailed = () => sortItemFailed();
@@ -1340,6 +1701,7 @@ namespace CommandExtension
         // PRINT SPECIAL ITEMS
         private static bool CommandFunction_PrintItemIds(string[] mayCommandParam)
         {
+            reinitAllIds();
             switch ((mayCommandParam.Length >= 2) ? mayCommandParam[1][0] : '-')
             {
                 case 'x':
@@ -1579,6 +1941,19 @@ namespace CommandExtension
             }
             return true;
         }
+
+        private static void giveItemMessage(int itemAmount, ItemData itemData)
+        {
+            int itemId = itemData.id;
+            string name = itemData.name.ToLower();
+            string nameColored = $"{name} ( ID: {itemId.ToString()} )";
+            CommandFunction_PrintToChat($"{playerNameForCommands.ColorText(Color.magenta)} got {itemAmount.ToString().ColorText(Color.white)} * {nameColored.ColorText(Color.white)}!".ColorText(Yellow));
+        }
+
+        private static void giveItemMessageFailed()
+        {
+
+        }
         // GIVE ITEM BY ID/NAME 
         private static bool CommandFunction_GiveItemByIdOrName(string[] mayCommandParam)
         {
@@ -1590,12 +1965,15 @@ namespace CommandExtension
 				string stringItem = itemId == 0 ? mayCommandParam[1].ToLower() : "";
 				stringItemId = itemId == 0 ? (Database.GetID(stringItem)) : 0;
 				int itemAmount = ((mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1);
-				if (itemId > 0)
+                Action<ItemData> itemDataFunc = (i) => giveItemMessage(itemAmount, i);
+                Action itemFailed = () => giveItemMessageFailed();
+
+                if (itemId > 0)
                 {
                     if (Database.ValidID(itemId))
                     {
                        GetPlayerForCommand().Inventory.AddItem(itemId, itemAmount, 0, true, true);
-                       CommandFunction_PrintToChat($"{playerNameForCommands.ColorText(Color.magenta)} got {itemAmount.ToString().ColorText(Color.white)} * {itemId.ToString().ColorText(Color.white)}!".ColorText(Yellow));
+                       Database.GetData<ItemData>(itemId, itemDataFunc, itemFailed);
                     }
 					else
 					{
@@ -1607,6 +1985,7 @@ namespace CommandExtension
 					if (Database.ValidID(stringItemId))
                     {
 						GetPlayerForCommand().Inventory.AddItem(stringItemId, itemAmount, 0, true, true);
+                        Database.GetData<ItemData>(stringItemId, itemDataFunc, itemFailed);
                     }
                     else
 					{
@@ -1629,6 +2008,7 @@ namespace CommandExtension
         // GIVE ITEM BY ID/NAME 
         private static bool CommandFunction_ShowItemByName(string[] mayCommandParam)
         {
+            reinitAllIds();
             if (mayCommandParam.Length >= 2)
             {
                 List<string> items = new List<string>();
@@ -1913,29 +2293,29 @@ namespace CommandExtension
         // AUTO-FILL MUSEUM
         private static bool CommandFunction_AutoFillMuseum()
         {
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here");
             int i = Array.FindIndex(Commands, command => command.Name == CmdAutoFillMuseum);
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 2");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 2");
             Commands[i].State = Commands[i].State == CommandState.Activated ? CommandState.Deactivated : CommandState.Activated;
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 3");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 3");
             bool flag = Commands[i].State == CommandState.Activated;
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 4");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 4");
             CommandFunction_PrintToChat($"{Commands[i].Name} {Commands[i].State.ToString().ColorText(flag ? Green : Red)}".ColorText(Yellow));
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 5");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 5");
             return true;
         }
         // CHEAT-FILL MUSEUM
         private static bool CommandFunction_CheatFillMuseum()
         {
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 6");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 6");
             int i = Array.FindIndex(Commands, command => command.Name == CmdCheatFillMuseum);
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 7");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 7");
             Commands[i].State = Commands[i].State == CommandState.Activated ? CommandState.Deactivated : CommandState.Activated;
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 8");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 8");
             bool flag = Commands[i].State == CommandState.Activated;
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 9");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 9");
             CommandFunction_PrintToChat($"{Commands[i].Name} {Commands[i].State.ToString().ColorText(flag ? Green : Red)}".ColorText(Yellow));
-            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 10");
+            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here 10");
             return true;
         }
         // TELEPORT
@@ -2060,9 +2440,12 @@ namespace CommandExtension
                 ScenePortalManager.Instance.ChangeScene(new Vector2(316.4159f, 152.5824f), "2Playerfarm");
             }
             else if (scene == "back")
+            {
                 ScenePortalManager.Instance.ChangeScene(lastLocation, lastScene);
-            else
+            }
+            else if (!getTpPoint(scene)) {
                 CommandFunction_PrintToChat("invalid scene name".ColorText(Color.red));
+            }
 
             return true;
         }
@@ -2070,6 +2453,8 @@ namespace CommandExtension
         private static bool CommandFunction_TeleportLocations()
         {
             foreach (string tpLocation in tpLocations)
+                CommandFunction_PrintToChat(tpLocation.ColorText(Color.white));
+            foreach (string tpLocation in tpPoints.Keys)
                 CommandFunction_PrintToChat(tpLocation.ColorText(Color.white));
             return true;
         }
@@ -2483,6 +2868,102 @@ namespace CommandExtension
             return true;
         }
 
+        // TELEPORT
+        private static bool CommandFunction_SetTp(string[] mayCmdParam)
+        {
+            if (mayCmdParam.Length <= 1)
+                return true;
+            string scene = mayCmdParam[1].ToLower();
+            bool settp = setTpPoint(scene);
+            if (settp)
+            {
+                CommandFunction_PrintToChat($"set tp point to {scene}!".ColorText(Color.green));
+            }
+            else
+            {
+                CommandFunction_PrintToChat("invalid scene name".ColorText(Color.red));
+            }
+
+            return true;
+        }
+
+        private static bool CommandFunction_GetTp(string[] mayCmdParam)
+        {
+            if (mayCmdParam.Length <= 1)
+                return true;
+            string scene = mayCmdParam[1].ToLower();
+            bool gettp = getTpPoint(scene);
+            if (gettp)
+            {
+                CommandFunction_PrintToChat($"Teleport to tp point {scene}!".ColorText(Color.green));
+            }
+            else
+            {
+                CommandFunction_PrintToChat("invalid scene name".ColorText(Color.red));
+            }
+            return true;
+        }
+        // GET TP LOCATIONS
+        private static bool CommandFunction_ListTp()
+        {
+            if (!tpPointsLoaded)
+            {
+                loadTpPoints();
+                tpPointsLoaded = true;
+            }
+
+            try
+            {
+                foreach (string tpLocation in tpPoints.Keys)
+                    CommandFunction_PrintToChat(tpLocation.ColorText(Color.white));
+            }
+            catch (Exception e) { 
+                Debug.LogException(e);
+            }
+            return true;
+        }
+
+        // CHRISTMAS SPECIAL UPDATE
+        private static bool CommandFunction_Christmas()
+        {
+            reinitAllIds();
+            try
+            {
+                int amount = getRangeRandomItemAmount();
+                int pos = getRangeRandomItemPos();
+                int rangeLength = getRangeRandomItemCount(pos);
+                Debug.Log("allIdsListSize: " + allIdsList.Count.ToString());
+                List<int> c = allIdsList.GetRange(pos, rangeLength);
+                Action<ItemData> itemDataFunc = (i) => giveItemMessage(1, i);
+                Action itemFailed = () => giveItemMessageFailed();
+
+                foreach (int itemId in c)
+                {
+                    if (itemId > 0)
+                    {
+                        if (Database.ValidID(itemId))
+                        {
+                            for (int i = 0; i < amount; i++)
+                            {
+                                GetPlayerForCommand().Inventory.AddItem(itemId, 1, 0, true, true);
+                                Database.GetData<ItemData>(itemId, itemDataFunc, itemFailed);
+                            }
+                        }
+                        else
+                        {
+                            CommandFunction_PrintToChat($"no item with id: {itemId.ToString().ColorText(Color.white)} found!".ColorText(Red));
+                        }
+                    }
+                }
+                CommandFunction_PrintToChat($"Merry christmas!".ColorText(Green));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+            return true;
+        }
+
         #endregion
 
         // duplicated "command methodes" (no functions) to use the in-game COMMAND feature
@@ -2691,6 +3172,18 @@ namespace CommandExtension
         private static void fm50(string INFO_sleepAndSaveTheGameBackup)
         {
         }
+        [Command("settp", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm51(string tpPointName)
+        {
+        }
+        [Command("gettp", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm52(string tpPointName)
+        {
+        }
+        [Command("christmas", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm53(string INFO_MerryChristmas)
+        {
+        }
         #endregion
         #endregion
 
@@ -2732,50 +3225,50 @@ namespace CommandExtension
         {
             static void Postfix(HungryMonster __instance, DecorationPositionData decorationData)
             {
-                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x1");
+                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x1");
                 Action<ItemData> itemDataFunc = null;
-                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x2");
+                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x2");
                 Action itemFailed = () => ShowItemFailed();
-                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x3");
+                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x3");
                 if (__instance.bundleType == BundleType.MuseumBundle)
                 {
-                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x4");
+                    //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x4");
                     if (Commands[Array.FindIndex(Commands, command => command.Name == CmdCheatFillMuseum)].State == CommandState.Activated
                     ||
                     Commands[Array.FindIndex(Commands, command => command.Name == CmdAutoFillMuseum)].State == CommandState.Activated)
                     {
-                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x5");
+                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x5");
                         Player player = GetPlayerForCommand();
                         if (player == null)
                         {
-                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x6");
+                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x6");
                             return;
                         }
                         HungryMonster monster = __instance;
-                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x7");
+                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x7");
                         if (monster.sellingInventory != null) // && monster.sellingInventory.Items != null && monster.sellingInventory.Items.Count >= 1
                         {
-                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x8");
+                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x8");
                             if (Commands.Any(command => command.Name == CmdCheatFillMuseum && command.State == CommandState.Activated))
                             {
-                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x9");
+                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x9");
                                 foreach (SlotItemData slotItemData in monster.sellingInventory.Items)
                                 {
-                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x10");
+                                    //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x10");
                                     if (slotItemData.slot == null || slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept || (slotItemData.slot.serializedItemToAccept == null && slotItemData.slot.itemToAccept == null) )
                                     {
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x11");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x11");
                                         continue;
                                     }
                                     int idToAccept = slotItemData.slot.itemToAccept != null ? slotItemData.slot.itemToAccept.id : 0;
                                     idToAccept = idToAccept == 0 && slotItemData.slot.serializedItemToAccept != null ? slotItemData.slot.serializedItemToAccept.id : 0;
                                     if (!monster.name.ToLower().Contains("money"))
                                     {
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x12");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x12");
                                         itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, true, i);
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x13");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x13");
                                         Database.GetData<ItemData>(slotItemData.slot.serializedItemToAccept.id, itemDataFunc, itemFailed);
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x14");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x14");
                                     }
                                     else if (monster.name.ToLower().Contains("money"))
                                     {
@@ -2783,9 +3276,9 @@ namespace CommandExtension
                                         if (idToAccept >= 60000 && idToAccept <= 60002)
                                         {
                                             itemDataFunc = (i) => AddItemToHungryMonster(monster, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData, false, false, i);
-                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x16");
+                                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x16");
                                             Database.GetData<ItemData>(idToAccept, itemDataFunc, itemFailed);
-                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x17");
+                                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x17");
                                         }//if (slotItemData.slot.itemToAccept.id == 60000)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
                                         //else if (slotItemData.slot.itemToAccept.id == 60001)
@@ -2793,55 +3286,55 @@ namespace CommandExtension
                                         //else if (slotItemData.slot.itemToAccept.id == 60002)
                                         //    monster.sellingInventory.AddItem(slotItemData.slot.itemToAccept.id, slotItemData.slot.numberOfItemToAccept - slotItemData.amount, slotItemData.slotNumber, false, false);
                                     }
-                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x18");
+                                    //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x18");
                                     monster.UpdateFullness();
                                 }
                             }
                             else
                             {
-                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x19");
+                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x19");
                                 foreach (SlotItemData slotItemData in monster.sellingInventory.Items)
                                 {
-                                    Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x20");
+                                    //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x20");
                                     if (!monster.name.ToLower().Contains("money") && slotItemData.item != null && player.Inventory != null)
                                     {
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x21");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x21");
                                         if (slotItemData.slot == null || slotItemData.item == null || slotItemData.slot.numberOfItemToAccept == 0 || slotItemData.amount == slotItemData.slot.numberOfItemToAccept || (slotItemData.slot.serializedItemToAccept == null && slotItemData.slot.itemToAccept == null))
                                         {
-                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x22");
+                                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x22");
                                             continue;
                                         }
                                         int idToAccept = slotItemData.slot.itemToAccept != null ? slotItemData.slot.itemToAccept.id : 0;
                                         idToAccept = idToAccept == 0 && slotItemData.slot.serializedItemToAccept != null ? slotItemData.slot.serializedItemToAccept.id : 0;
                                         Inventory pInventory = player.Inventory;
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x23");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x23");
                                         foreach (var pItem in pInventory.Items)
                                         {
-                                            Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x24");
+                                            //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x24");
                                             if (pItem.id == idToAccept)
                                             {
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x25");
+                                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x25");
                                                 int amount = Math.Min(pItem.amount, slotItemData.slot.numberOfItemToAccept - slotItemData.amount);
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x26");
+                                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x26");
                                                 itemDataFunc = (i) => AddItemToHungryMonsterTransfered(monster, amount, slotItemData, false, true, i);
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x27");
+                                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x27");
                                                 Database.GetData<ItemData>(idToAccept, itemDataFunc, itemFailed);
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x28");
+                                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x28");
                                                 player.Inventory.RemoveItem(pItem.item, amount);
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x29");
+                                                //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x29");
                                                 monster.UpdateFullness();
-                                                Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x30");
+                                               // Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x30");
                                             }
                                         }
-                                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x31");
+                                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x31");
                                     }
                                 }
                             }
 
                         }
-                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x32");
+                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x32");
                         Array.ForEach(FindObjectsOfType<MuseumBundleVisual>(), vPodium => typeof(MuseumBundleVisual).GetMethod("OnSaveInventory", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(vPodium, null));
-                        Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x33");
+                        //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x33");
                     }
                 }
 
