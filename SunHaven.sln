@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Polygamy", "Polygamy\Polyga
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BreakableHeavystoneAndHardwood", "BreakableHeavystoneAndHardwood\BreakableHeavystoneAndHardwood.csproj", "{02DB5B52-C9E8-43C4-8621-78EC2D4665BC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KryziK.SunHaven.ChestLabels", "KryziK.SunHaven.ChestLabels\KryziK.SunHaven.ChestLabels.csproj", "{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{02DB5B52-C9E8-43C4-8621-78EC2D4665BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{02DB5B52-C9E8-43C4-8621-78EC2D4665BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{02DB5B52-C9E8-43C4-8621-78EC2D4665BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

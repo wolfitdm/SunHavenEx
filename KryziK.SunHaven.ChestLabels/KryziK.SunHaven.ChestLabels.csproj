@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--Project was exported from assembly: C:\Users\ABC\Downloads\Chest Labels-150-1-0-5-1698843986 (1)\KryziK.SunHaven.ChestLabels.dll-->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{809E36FA-3603-4BCA-A134-8B0CC2F4E0F9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AssemblyName>KryziK.SunHaven.ChestLabels</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <ApplicationVersion>1.0.5.0</ApplicationVersion>
+    <FileAlignment>512</FileAlignment>
+    <RootNamespace>KryziK</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\Libraries\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\..\..\Libraries\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="PSS.Database">
+      <HintPath>..\..\..\..\Libraries\PSS.Database.dll</HintPath>
+    </Reference>
+    <Reference Include="Sirenix.Serialization">
+      <HintPath>..\..\..\..\Libraries\Sirenix.Serialization.dll</HintPath>
+    </Reference>
+    <Reference Include="SunHaven.Core">
+      <HintPath>..\..\..\..\Libraries\SunHaven.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\..\..\..\Libraries\Unity.TextMeshPro.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ChestLabels\System\Runtime\CompilerServices\RefSafetyRulesAttribute.cs" />
+    <Compile Include="ChestLabels\KryBasePlugin.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\ChestPatch.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\KryChestLabel.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\KryHitbox.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\ChestLabelsPlugin.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\ComponentVisibility.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\MyPluginInfo.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\Extensions\ChestExtensions.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\Extensions\ColorExtensions.cs" />
+    <Compile Include="ChestLabels\SunHaven\ChestLabels\Extensions\DayCycleExtensions.cs" />
+    <Compile Include="ChestLabels\Utilities\GameObjectExtensions.cs" />
+    <Compile Include="ChestLabels\Utilities\UpdateTools.cs" />
+    <Compile Include="ChestLabels\Utilities\EnumerableExtensions.cs" />
+    <Compile Include="ChestLabels\Utilities\FuckUnityObject`1.cs" />
+    <Compile Include="ChestLabels\Utilities\ReflectionExtensions.cs" />
+    <Compile Include="ChestLabels\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
