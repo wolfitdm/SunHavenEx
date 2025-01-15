@@ -102,6 +102,7 @@ namespace CommandExtension
         public const string CmdSetTp = CmdPrefix + "settp";
         public const string CmdGetTp = CmdPrefix + "gettp";
         public const string CmdListTp = CmdPrefix + "listtp";
+        public const string CmdMainSp = CmdPrefix + "msp";
         public enum CommandState { None, Activated, Deactivated }
         // COMMAND CLASS
         public class Command
@@ -175,6 +176,7 @@ namespace CommandExtension
             new Command(CmdSetTp,                   "Set a tp point on your location!",                                         CommandState.None),
             new Command(CmdGetTp,                   "Teleport to a setted tp point!",                                           CommandState.None),
             new Command(CmdListTp,                  "List your tp points!",                                                     CommandState.None),
+            new Command(CmdMainSp,                  "Change or see your main spouse!",                                          CommandState.None),
         };
         #endregion
 
@@ -1601,6 +1603,9 @@ namespace CommandExtension
                 case CmdListTp:
                     return CommandFunction_ListTp();
 
+                case CmdMainSp:
+                    return CommandFunction_MainSp(originalMayCommandParam);
+
                 // no valid command found
                 default:
                     return false;
@@ -2602,7 +2607,6 @@ namespace CommandExtension
                 bool all = name.ToLower() == "all";
                 NPCAI[] npcs = FindObjectsOfType<NPCAI>();
                 List<string> spouses = new List<string>();
-                Debug.Log((object)"PolygamyMod v1 111 - 5");
                 int count = 0;
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
@@ -2710,7 +2714,16 @@ namespace CommandExtension
                     }
                 } else
                 {
-                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", spouses[0]);
+                    string marriedWIth = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
+                    string spouse = spouses[0];
+                    if (!marriedWIth.IsNullOrWhiteSpace())
+                    {
+                        if(spouses.Contains(marriedWIth))
+                        {
+                            spouse = marriedWIth;
+                        }
+                    }
+                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", spouse);
                     SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", true);
                     if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                     {
@@ -2720,8 +2733,8 @@ namespace CommandExtension
                     {
                         ultraPolyGamySpouts.Remove("new_main");
                     }
-                    ultraPolyGamySpouts.Add("current_spouse", spouses[0]);
-                    ultraPolyGamySpouts.Add("new_main", spouses[0]);
+                    ultraPolyGamySpouts.Add("current_spouse", spouse);
+                    ultraPolyGamySpouts.Add("new_main", spouse);
                 }
                 saveSpouts();
                 if (!all)
@@ -3131,6 +3144,34 @@ namespace CommandExtension
             return true;
         }
 
+        // MAIN SPOUSE
+        private static bool CommandFunction_MainSp(string[] mayCmdParam)
+        {
+            string npcName = "";
+            bool married = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Married");
+            if (!married)
+            {
+                CommandFunction_PrintToChat("You are not married!".ColorText(Color.red));
+                return true;
+            }
+            if (mayCmdParam.Length <= 1)
+            {
+                npcName = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
+                CommandFunction_PrintToChat("Your main spouse is: " + npcName.ColorText(Color.green));
+            } else
+            {
+                bool marriedTo = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + mayCmdParam[1]);
+                if (!marriedTo)
+                {
+                    CommandFunction_PrintToChat("You are not married to " + mayCmdParam[1].ColorText(Color.red));
+                    return true;
+                }
+                npcName = mayCmdParam[1];
+                SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", npcName);
+            }
+            return true;
+        }
+
         #endregion
 
         // duplicated "command methodes" (no functions) to use the in-game COMMAND feature
@@ -3349,6 +3390,11 @@ namespace CommandExtension
         }
         [Command("christmas", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
         private static void fm53(string INFO_MerryChristmas)
+        {
+        }
+
+        [Command("msp", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm54(string OPTIONAL_spouse_to_set)
         {
         }
         #endregion
