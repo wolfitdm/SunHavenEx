@@ -3168,6 +3168,7 @@ namespace CommandExtension
                 }
                 npcName = mayCmdParam[1];
                 SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", npcName);
+                CommandFunction_PrintToChat("Your main spouse is: " + npcName.ColorText(Color.green));
             }
             return true;
         }
