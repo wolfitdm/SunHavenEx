@@ -22,6 +22,7 @@ using UnityEngine;
 using System.Collections;
 using System.IO;
 using System.Runtime.Remoting.Messaging;
+using TinyJson;
 
 
 namespace Polygamy;
@@ -32,6 +33,9 @@ public class PolygamyPlugin : BaseUnityPlugin
     private const string pluginGuid = "vurawnica.sunhaven.polygamy";
     private const string pluginName = "Polygamy";
     private const string pluginVersion = "0.0.4";
+    private static bool ultraPolyGamySpoutsLoaded = false;
+    private static string jsonUltraPolyGamySpoutsPath = Path.Combine(Paths.ConfigPath, "ultra_polygamy_spoutes.json");
+    private static Dictionary<string, string> ultraPolyGamySpouts = new Dictionary<string, string>();
     private Harmony m_harmony = new Harmony(pluginGuid);
     public static ManualLogSource logger;
 
@@ -52,6 +56,67 @@ public class PolygamyPlugin : BaseUnityPlugin
         PolygamyPlugin.logger = this.Logger;
         logger.LogInfo((object)$"Plugin {pluginName} is loaded!");
         this.m_harmony.PatchAll();
+    }
+
+    private static bool saveSpouts()
+    {
+        try
+        {
+            string json = ultraPolyGamySpouts.ToJson();
+            System.IO.File.WriteAllText(jsonUltraPolyGamySpoutsPath, json);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            return false;
+        }
+    }
+
+    private static bool loadSpouts()
+    {
+        if (!File.Exists(jsonUltraPolyGamySpoutsPath))
+        {
+            saveSpouts();
+            return true;
+        }
+
+        Dictionary<string, string> oldUltraPolyGamySpouts = ultraPolyGamySpouts.ToDictionary(entry => entry.Key,
+                                                                       entry => entry.Value);
+        Dictionary<string, string> newUltraPolyGamySpouts = new Dictionary<string, string>();
+        try
+        {
+            string fileJson = System.IO.File.ReadAllText(jsonUltraPolyGamySpoutsPath);
+            newUltraPolyGamySpouts = fileJson.FromJson<Dictionary<string, string>>();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+        try
+        {
+            foreach (var k in newUltraPolyGamySpouts)
+            {
+                if (oldUltraPolyGamySpouts.ContainsKey(k.Key))
+                {
+                    oldUltraPolyGamySpouts.Remove(k.Key);
+                }
+                oldUltraPolyGamySpouts.Add(k.Key, k.Value);
+            }
+            foreach (var k in oldUltraPolyGamySpouts)
+            {
+                if (ultraPolyGamySpouts.ContainsKey(k.Key))
+                {
+                    ultraPolyGamySpouts.Remove(k.Key);
+                }
+                ultraPolyGamySpouts.Add(k.Key, k.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+        }
+        return true;
     }
 
     [HarmonyPatch(typeof(NPCAI), "HandleLoveLetter")]
@@ -1366,59 +1431,167 @@ public class PolygamyPlugin : BaseUnityPlugin
     {
         public static void Prefix(NPCAI __instance, ref string ____npcName)
         {
+            loadSpouts();
+            Debug.Log((object)"PolygamyMod v1 111 - 1");
             if (__instance != null && ____npcName == __instance.OriginalName)
             {
+                Debug.Log((object)"PolygamyMod v1 111 - 2");
                 PolygamyPlugin.logger.LogInfo("[PolyGamy Mod v0.0.4 UpdatedByWerri]: You can use __instance.OriginalName!");
+                Debug.Log((object)"PolygamyMod v1 111 - 3");
             }
-
+            Debug.Log((object)"PolygamyMod v1 111 - 4");
             try
             {
                 List<string> spouses = new List<string>();
+                Debug.Log((object)"PolygamyMod v1 111 - 5");
                 int count = 0;
                 string new_main;
 
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
+                    Debug.Log((object)"PolygamyMod v1 111 - 6");
                     spouses.Add(npcai.OriginalName);
+                    Debug.Log((object)"PolygamyMod v1 111 - 7");
                     count += 1;
+                    if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + __instance.OriginalName))
+                    {
+                        ultraPolyGamySpouts.Add("MarriedTo" + __instance.OriginalName, __instance.OriginalName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("Married" + __instance.OriginalName))
+                    {
+                        ultraPolyGamySpouts.Add("Married" + __instance.OriginalName, __instance.OriginalName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("Dating" + __instance.OriginalName))
+                    {
+                        ultraPolyGamySpouts.Add("Dating" + __instance.OriginalName, __instance.OriginalName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("MarriedWith" + __instance.OriginalName))
+                    {
+                        ultraPolyGamySpouts.Add("MarriedWith" + __instance.OriginalName, __instance.OriginalName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    {
+                        ultraPolyGamySpouts.Add("current_spouse", __instance.OriginalName);
+                    }
                 }
                 if (count <= 1)
                 {
+                    Debug.Log((object)"PolygamyMod v1 111 - 8");
                     return;
                 }
 
                 if (spouses[0] == __instance.OriginalName)
                 {
+                    Debug.Log((object)"PolygamyMod v1 111 - 9");
                     new_main = spouses[1];
+                    if (!ultraPolyGamySpouts.ContainsKey("new_main"))
+                    {
+                        ultraPolyGamySpouts.Add("new_main", new_main);
+                    } else
+                    {
+                        ultraPolyGamySpouts.Remove("new_main");
+                        ultraPolyGamySpouts.Add("new_main", new_main);
+                    }
                 }
                 else
                 {
+                    Debug.Log((object)"PolygamyMod v1 111 - 10");
                     new_main = spouses[0];
+                    if (!ultraPolyGamySpouts.ContainsKey("new_main"))
+                    {
+                        ultraPolyGamySpouts.Add("new_main", new_main);
+                    } else
+                    {
+                        ultraPolyGamySpouts.Remove("new_main");
+                        ultraPolyGamySpouts.Add("new_main", new_main);
+                    }
                 }
                 string current_spouse = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
-
-                SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(current_spouse + "MarriedWalkPath", false, true);
-                NPCAI realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(current_spouse);
-                realNPC.GeneratePath();
-                SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
-
+                NPCAI realNPC = null;
+                bool haveCurrentSpouse = false;
+                if (current_spouse.IsNullOrWhiteSpace())
+                {
+                    if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    {
+                        if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
+                        {
+                            haveCurrentSpouse = true;
+                        }
+                    }
+                } else
+                {
+                    haveCurrentSpouse = true;
+                }
+                if (haveCurrentSpouse) {
+                    Debug.Log((object)"PolygamyMod v1 111 - 11");
+                    SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(current_spouse + "MarriedWalkPath", false, true);
+                    Debug.Log((object)"PolygamyMod v1 111 - 12");
+                    realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(current_spouse);
+                    realNPC.GeneratePath();
+                    SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
+                }
+                /*SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("MarriedTo" + this.OriginalName, true);
+                SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", true);
+                SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Dating" + this.OriginalName, false);
+                SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", this.OriginalName);
+                if (SingletonBehaviour<GameSave>.Instance.GetProgressBoolWorld("Tier3House"))
+                {
+                 SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(this.OriginalName + "MarriedWalkPath", true);
+                 NPCAI realNpc = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(this.OriginalName);
+                  realNpc.GeneratePath();
+                 SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNpc);
+                }
+                Wish.Utilities.UnlockAcheivement(100);
+                this.GenerateCycle();*/
+                Debug.Log((object)"PolygamyMod v1 111 - 13");
                 SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("MarriedTo" + __instance.OriginalName, true);
                 SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", true);
                 SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Dating" + __instance.OriginalName, false);
                 SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", __instance.OriginalName);
+                if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + __instance.OriginalName))
+                {
+                    ultraPolyGamySpouts.Add("MarriedTo" + __instance.OriginalName, __instance.OriginalName);
+                }
+                if (!ultraPolyGamySpouts.ContainsKey("Married" + __instance.OriginalName))
+                {
+                    ultraPolyGamySpouts.Add("Married" + __instance.OriginalName, __instance.OriginalName);
+                }
+                if (!ultraPolyGamySpouts.ContainsKey("Dating" + __instance.OriginalName))
+                {
+                    ultraPolyGamySpouts.Add("Dating" + __instance.OriginalName, __instance.OriginalName);
+                }
+                if (!ultraPolyGamySpouts.ContainsKey("MarriedWith" + __instance.OriginalName))
+                {
+                    ultraPolyGamySpouts.Add("MarriedWith" + __instance.OriginalName, __instance.OriginalName);
+                }
+                if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                {
+                    ultraPolyGamySpouts.Add("current_spouse", __instance.OriginalName);
+                }
+                saveSpouts();
                 if (SingletonBehaviour<GameSave>.Instance.GetProgressBoolWorld("Tier3House"))
                 {
+                    Debug.Log((object)"PolygamyMod v1 111 - 14");
                     SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(__instance.OriginalName + "MarriedWalkPath", true, true);
+                    if (!ultraPolyGamySpouts.ContainsKey("MarriedWalkPath" + __instance.OriginalName))
+                    {
+                        ultraPolyGamySpouts.Add("MarriedWalkPath" + __instance.OriginalName, __instance.OriginalName);
+                        saveSpouts();
+                    }
                     realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(__instance.OriginalName);
                     realNPC.GeneratePath();
                     SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
+                    Debug.Log((object)"PolygamyMod v1 111 - 15");
                 }
                 Utilities.UnlockAcheivement(100);
+                Debug.Log((object)"PolygamyMod v1 111 - 16");
                 __instance.GenerateCycle(false);
+                Debug.Log((object)"PolygamyMod v1 111 - 17");
                 return;
             }
             catch (Exception e)
             {
+                Debug.Log((object)"PolygamyMod v1 111 - 18");
                 write_exception_to_console(e);
                 return;
             }
@@ -1535,7 +1708,30 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                     foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                     {
+                        loadSpouts();
                         spouses.Add(npcai.OriginalName);
+                        string npcName = npcai.OriginalName;
+                        if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + npcName))
+                        {
+                            ultraPolyGamySpouts.Add("MarriedTo" + npcName, npcName);
+                        }
+                        if (!ultraPolyGamySpouts.ContainsKey("Married" + npcName))
+                        {
+                            ultraPolyGamySpouts.Add("Married" + npcName, npcName);
+                        }
+                        if (!ultraPolyGamySpouts.ContainsKey("Dating" + npcName))
+                        {
+                            ultraPolyGamySpouts.Add("Dating" + npcName, npcName);
+                        }
+                        if (!ultraPolyGamySpouts.ContainsKey("MarriedWith" + npcName))
+                        {
+                            ultraPolyGamySpouts.Add("MarriedWith" + npcName, npcName);
+                        }
+                        if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                        {
+                            ultraPolyGamySpouts.Add("current_spouse", npcName);
+                        }
+                        saveSpouts();
                     }
                     foreach (var name in spouses)
                     {
@@ -1564,14 +1760,36 @@ public class PolygamyPlugin : BaseUnityPlugin
                             i = 0;
                             dictionary2 = new Dictionary<int, Response>();
                         }
-
+                        bool haveCurrentSpouse = false;
                         Response response = new Response();
                         response.responseText = (() => name);
                         response.action = delegate ()
                         {
                             string current_spouse = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
 
+                            if (current_spouse.IsNullOrWhiteSpace())
+                            {
+                                if(ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                                {
+                                    if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
+                                    {
+                                        haveCurrentSpouse = true;
+                                    }
+                                }
+                            } else
+                            {
+                                haveCurrentSpouse = true;
+                            }
+
                             SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(current_spouse + "MarriedWalkPath", false, true);
+                            if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                            {
+                                ultraPolyGamySpouts.Add("current_spouse", current_spouse);
+                            } else
+                            {
+                                ultraPolyGamySpouts.Remove("current_spouse");
+                                ultraPolyGamySpouts.Add("current_spouse", current_spouse);
+                            }
                             NPCAI realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(current_spouse);
                             realNPC.GeneratePath();
                             SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
@@ -1655,12 +1873,13 @@ public class PolygamyPlugin : BaseUnityPlugin
                         SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", new_main);
                     }
                     SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("MarriedTo" + name, false);
+                    SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(name + "MarriedWalkPath", false);
+                    GameSave.CurrentCharacter.Relationships[name] = 40f;
 
                     NPCAI realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(name);
+                    realNPC.GenerateCycle(false);
                     realNPC.GeneratePath();
                     SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
-                    GameSave.CurrentCharacter.Relationships[name] = 40f;
-                    SingletonBehaviour<NPCManager>.Instance.GetRealNPC(name).GenerateCycle(false);
                 };
                 dictionary1.Add(0, response01);
 

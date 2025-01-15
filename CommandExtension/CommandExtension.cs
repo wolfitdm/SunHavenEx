@@ -1200,6 +1200,68 @@ namespace CommandExtension
             }
             return true;
         }
+
+        private static bool saveSpouts()
+        {
+            try
+            {
+                string json = ultraPolyGamySpouts.ToJson();
+                System.IO.File.WriteAllText(jsonUltraPolyGamySpoutsPath, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return false;
+            }
+        }
+
+        private static bool loadSpouts()
+        {
+            if (!File.Exists(jsonUltraPolyGamySpoutsPath))
+            {
+                saveSpouts();
+                return true;
+            }
+
+            Dictionary<string, string> oldUltraPolyGamySpouts = ultraPolyGamySpouts.ToDictionary(entry => entry.Key,
+                                                                           entry => entry.Value);
+            Dictionary<string, string> newUltraPolyGamySpouts = new Dictionary<string, string>();
+            try
+            {
+                string fileJson = System.IO.File.ReadAllText(jsonUltraPolyGamySpoutsPath);
+                newUltraPolyGamySpouts = fileJson.FromJson<Dictionary<string, string>>();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+            try
+            {
+                foreach (var k in newUltraPolyGamySpouts)
+                {
+                    if (oldUltraPolyGamySpouts.ContainsKey(k.Key))
+                    {
+                        oldUltraPolyGamySpouts.Remove(k.Key);
+                    }
+                    oldUltraPolyGamySpouts.Add(k.Key, k.Value);
+                }
+                foreach (var k in oldUltraPolyGamySpouts)
+                {
+                    if (ultraPolyGamySpouts.ContainsKey(k.Key))
+                    {
+                        ultraPolyGamySpouts.Remove(k.Key);
+                    }
+                    ultraPolyGamySpouts.Add(k.Key, k.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+            return true;
+        }
+
         private static Dictionary<string, int> allIds = null;
         private static HashSet<int> validIDs = null;
         private static List<int> allIdsList = null;
@@ -1210,6 +1272,9 @@ namespace CommandExtension
         private static bool tpPointsLoaded = false;
         private static string jsonTpPointsPath = Path.Combine(Paths.ConfigPath, "commandextension_tp_points.json");
         private static Dictionary<string, string> tpPoints = new Dictionary<string, string>();
+        private static bool ultraPolyGamySpoutsLoaded = false;
+        private static string jsonUltraPolyGamySpoutsPath = Path.Combine(Paths.ConfigPath, "ultra_polygamy_spoutes.json");
+        private static Dictionary<string, string> ultraPolyGamySpouts = new Dictionary<string, string>();
         private static System.Random random = getRandom();
 
         private static void reinitAllIds()
@@ -2532,34 +2597,136 @@ namespace CommandExtension
         {
             if (mayCmdParam.Length >= 2)
             {
+                loadSpouts();
                 string name = mayCmdParam[1];
                 bool all = name.ToLower() == "all";
                 NPCAI[] npcs = FindObjectsOfType<NPCAI>();
+                List<string> spouses = new List<string>();
+                Debug.Log((object)"PolygamyMod v1 111 - 5");
+                int count = 0;
+                foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
+                {
+                    spouses.Add(npcai.OriginalName);
+                    count += 1;
+                    string npcName = npcai.OriginalName;
+                    if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + npcName))
+                    {
+                        ultraPolyGamySpouts.Add("MarriedTo" + npcName, npcName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("Married" + npcName))
+                    {
+                        ultraPolyGamySpouts.Add("Married" + npcName, npcName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("Dating" + npcName))
+                    {
+                        ultraPolyGamySpouts.Add("Dating" + npcName, npcName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("MarriedWith" + npcName))
+                    {
+                        ultraPolyGamySpouts.Add("MarriedWith" + npcName, npcName);
+                    }
+                    if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    {
+                        ultraPolyGamySpouts.Add("current_spouse", npcName);
+                    }
+                    saveSpouts();
+                }
+                string progressStringCharacter = null;
                 foreach (NPCAI npcai in npcs)
                 {
                     string npcName = npcai.OriginalName;
                     if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
                     {
-                        continue;
+                        SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.Add(npcName, 0);
                     }
                     if (all || npcName.ToLower() == name.ToLower())
                     {
                         npcai.MarryPlayer();
-                        string progressStringCharacter = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
+                        loadSpouts();
+                        bool progressBoolCharacterMarriedTo = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcName);
+                        bool progressBoolCharacterMarried = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Married");
+                        bool progressBoolCharacterDating = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Dating" + npcName);
+                        bool progressBoolCharacterMarriedWith = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedWith");
+                        bool progressBoolWorldTier3House = SingletonBehaviour<GameSave>.Instance.GetProgressBoolWorld("Tier3House");
+                        bool progressMarriedWalkPath = progressBoolWorldTier3House ? SingletonBehaviour<GameSave>.Instance.GetProgressBoolWorld(npcName + "MarriedWalkPath") : false;
+                        /*SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("MarriedTo" + this.OriginalName, true);
+                        SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", true);
+                        SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Dating" + this.OriginalName, false);
+                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", this.OriginalName);
+                        if (SingletonBehaviour<GameSave>.Instance.GetProgressBoolWorld("Tier3House"))
+                        {
+                            SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(this.OriginalName + "MarriedWalkPath", true);
+                            NPCAI realNpc = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(this.OriginalName);
+                            realNpc.GeneratePath();
+                            SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNpc);
+                        }
+                        Wish.Utilities.UnlockAcheivement(100);
+                        this.GenerateCycle();*/
+                        spouses.Remove(npcai.OriginalName);
+                        if (ultraPolyGamySpouts.ContainsKey("MarriedTo" + npcName))
+                        {
+                            ultraPolyGamySpouts.Remove("MarriedTo" + npcName);
+                        }
+                        if (ultraPolyGamySpouts.ContainsKey("Married" + npcName))
+                        {
+                            ultraPolyGamySpouts.Remove("Married" + npcName);
+                        }
+                        if (ultraPolyGamySpouts.ContainsKey("Dating" + npcName))
+                        {
+                            ultraPolyGamySpouts.Remove("Dating" + npcName);
+                        }
+                        if (ultraPolyGamySpouts.ContainsKey("MarriedWith" + npcName))
+                        {
+                            ultraPolyGamySpouts.Remove("MarriedWith" + npcName);
+                        }
+                        progressStringCharacter = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
                         if (!progressStringCharacter.IsNullOrWhiteSpace())
                         {
-                            SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", "");
-                            SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", false);
                             SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("MarriedTo" + progressStringCharacter, false);
                             GameSave.CurrentCharacter.Relationships[progressStringCharacter] = 40f;
-                            SingletonBehaviour<NPCManager>.Instance.GetRealNPC(progressStringCharacter).GenerateCycle(false);
-                        }
-                        if (!all)
-                        {
-                            CommandFunction_PrintToChat($"You divorced {npcName.ColorText(Color.white)}!".ColorText(Green));
-                            return true;
+                            NPCAI realNPC = SingletonBehaviour<NPCManager>.Instance.GetRealNPC(progressStringCharacter);
+                            realNPC.GenerateCycle(false);
+                            realNPC.GeneratePath();
+                            SingletonBehaviour<NPCManager>.Instance.StartNPCPath(realNPC);
+                            SingletonBehaviour<GameSave>.Instance.SetProgressBoolWorld(name + "MarriedWalkPath", false);
+                            if (!all)
+                            {
+                                CommandFunction_PrintToChat($"You divorced {npcName.ColorText(Color.white)}!".ColorText(Green));
+                            }
                         }
                     }
+                }
+                if (spouses.Count == 0)
+                {
+                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", "");
+                    SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", false);
+                    if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    {
+                        ultraPolyGamySpouts.Remove("current_spouse");
+                    }
+                    if (ultraPolyGamySpouts.ContainsKey("new_main"))
+                    {
+                        ultraPolyGamySpouts.Remove("new_main");
+                    }
+                } else
+                {
+                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", spouses[0]);
+                    SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("Married", true);
+                    if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    {
+                        ultraPolyGamySpouts.Remove("current_spouse");
+                    }
+                    if (ultraPolyGamySpouts.ContainsKey("new_main"))
+                    {
+                        ultraPolyGamySpouts.Remove("new_main");
+                    }
+                    ultraPolyGamySpouts.Add("current_spouse", spouses[0]);
+                    ultraPolyGamySpouts.Add("new_main", spouses[0]);
+                }
+                saveSpouts();
+                if (!all)
+                {
+                    return true;
                 }
                 CommandFunction_PrintToChat(all ? "You divorced all NPCs!".ColorText(Green) : $"no npc with the name {name.ColorText(Color.white)} found!".ColorText(Red));
             }
@@ -2585,7 +2752,7 @@ namespace CommandExtension
                         string npcName = npc.OriginalName;
                         if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
                         {
-                            continue;
+                            SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.Add(npcName, 0);
                         }
                         if (all || npcName.ToLower() == name.ToLower())
                         {
@@ -2644,7 +2811,7 @@ namespace CommandExtension
                     string npcName = npcai.OriginalName;
                     if (!SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.ContainsKey(npcName))
                     {
-                        continue;
+                        SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.Add(npcName, 0);
                     }
                     if (all || npcName.ToLower() == name.ToLower())
                     {
