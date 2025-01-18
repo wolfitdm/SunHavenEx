@@ -23,6 +23,15 @@ using System.Collections;
 using System.IO;
 using System.Runtime.Remoting.Messaging;
 using TinyJson;
+using static System.Net.Mime.MediaTypeNames;
+using System.Reflection.Emit;
+using System.Runtime.Remoting.Metadata;
+using System.Data;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
+using System.Runtime.CompilerServices;
 
 
 namespace Polygamy;
@@ -38,6 +47,11 @@ public class PolygamyPlugin : BaseUnityPlugin
     private static Dictionary<string, string> ultraPolyGamySpouts = new Dictionary<string, string>();
     private Harmony m_harmony = new Harmony(pluginGuid);
     public static ManualLogSource logger;
+    private static String lastScene = null;
+    private static Vector3 lastLocation;
+    private static String lastTempScene = null;
+    private static Vector3 lastTempLocation;
+    private static string[] marriageCharacters = new string[] { "Anne", "Catherine", "Claude", "Darius", "Donovan", "Iris", "Jun", "Kai", "Karish", "Kitty", "Liam", "Lucia", "Lucius", "Lynn", "Miyeon", "Nathaniel", "Shang", "Vaan", "Vivi", "Wesley", "Wornhardt", "Xyla", "Zaria"};
 
     public static void write_exception_to_console(Exception ex)
     {
@@ -55,9 +69,33 @@ public class PolygamyPlugin : BaseUnityPlugin
         // Plugin startup logic
         PolygamyPlugin.logger = this.Logger;
         logger.LogInfo((object)$"Plugin {pluginName} is loaded!");
+        HarmonyPatch_ScenePortalSpot_EnterHouse.Patch_ScenePortalSpot_EnterHouse(this.m_harmony);
         this.m_harmony.PatchAll();
     }
 
+    private static void setScene()
+    {
+        lastScene = ScenePortalManager.ActiveSceneName;
+        lastLocation = Player.Instance.transform.position;
+    }
+
+    private static void getScene()
+    {
+        if (lastScene == null)
+        {
+            return;
+        }
+        ScenePortalManager.Instance.ChangeScene(lastLocation, lastScene);
+    }
+
+    private static void loadCurrentScene()
+    {
+        setScene();
+        lastTempLocation = new Vector2(361.236755f, 124.104744f);
+        lastTempScene = "2playerfarm";
+        UnityAction unityAction = getScene;
+        ScenePortalManager.Instance.ChangeScene(lastTempLocation, lastTempScene, unityAction);
+    }
     private static bool saveSpouts()
     {
         try
@@ -1209,6 +1247,142 @@ public class PolygamyPlugin : BaseUnityPlugin
       }
     }
 
+    class HarmonyPatch_ScenePortalSpot_EnterHouse
+    {
+
+        private static MethodInfo reentrantMethod;
+        private static MethodInfo reentrantMethodSetSpouse;
+        public static List<int> actions = new List<int>();
+        public static UnityAction onChangeScene = null;
+        public static PlayerHouse playerHouse = null;
+        public static ScenePortalSpot portalSpot = null;
+        public static DecorationPositionData oldMeta = null;
+        private static MethodInfo onChangeSceneMethod = null;
+        private static void EnterHousePostfix(UnityAction onSceneLoad, ScenePortalSpot __instance)
+        {
+            Debug.Log("EnterHouse aber dally");
+        }
+
+        private static void SetSpousePostfix(PlayerHouse __instance)
+        {
+            return;
+        }
+
+        private static void SetMetaPostfix(DecorationPositionData decorationData, PlayerHouse __instance)
+        {
+            if (onChangeSceneMethod == null)
+            {
+                onChangeSceneMethod = __instance.GetType().GetMethod("OnChangeScene", BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+
+            if (onChangeSceneMethod != null) {
+                onChangeSceneMethod.Invoke(__instance,  null);
+            }
+            decorationData.meta = __instance.meta;
+            playerHouse = __instance;
+        }
+
+        public static void EnterHousePostFix(UnityAction onSceneLoad)
+        {
+            Debug.Log("Hallo was geht");
+        }
+        public static void Interact(int interactType, ScenePortalSpot __instance)
+        {
+            if (interactType != 0)
+                return;
+            __instance.InteractWithPortal();
+        }
+
+        public static void OnChangeScenePrefix(ScenePortalSpot __instance)
+        {
+            UnityAction onChangeScene = __instance.onChangeScene;
+            if (onChangeScene == null && HarmonyPatch_ScenePortalSpot_EnterHouse.onChangeScene != null)
+            {
+                onChangeScene = HarmonyPatch_ScenePortalSpot_EnterHouse.onChangeScene;
+            }
+            if (onChangeScene == null)
+            {
+                return;
+            }
+            onChangeScene();
+            string name = onChangeScene.Method.ReflectedType.Name;
+            if (name == "PlayerHouse")
+            {
+                HarmonyPatch_ScenePortalSpot_EnterHouse.onChangeScene = onChangeScene;
+            }
+        }
+
+       public static void BuildPostfix(PlayerHouse __instance)
+        {
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+            Debug.Log("Hallo was geh             dddddt");
+          /*  if (portalSpot != null)
+            {
+                return;
+            }
+            Debug.Log("Hallo was geh             dddddt");
+            FieldInfo _portal = typeof(PlayerHouse).GetField("_portal", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (_portal == null)
+            {
+                Debug.Log("Fuck of postfix");
+                return;
+            }
+            object obj = _portal.GetValue(__instance);
+            if (obj.GetType() != typeof(ScenePortalSpot))
+            {
+                Debug.Log("Fuck of postfix 2");
+                return;
+            }
+            ScenePortalSpot portal = (ScenePortalSpot)obj;
+            if (portal == null || portal.onChangeScene == null)
+            {
+                Debug.Log("Fuck of postfix 3");
+                return;
+            }
+            portalSpot = portal;
+            onChangeScene = portalSpot.onChangeScene;*/
+        }
+
+
+        private static Boolean patched = false;
+
+        public static void Patch_ScenePortalSpot_EnterHouse(Harmony harmony)
+        {
+            if (patched) return;
+            var original = AccessTools.Method(typeof(ScenePortalSpot), "EnterHouse");
+            var originalOnChangeScene = AccessTools.Method(typeof(PlayerHouse), "SetSpouse");
+            var baseSetMeta = AccessTools.Method(typeof(PlayerHouse), "SetMeta");
+            var interactScenePortalSpot = AccessTools.Method(typeof(ScenePortalSpot), "Interact");
+            //var prefix = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "EnterHousePostfix");
+            //var prefixOnChangeScene = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "SetSpousePostfix");
+            var prefixSetMeta = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "SetMetaPostfix");
+            //var enterHousePostfix = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "EnterHousePostfix");
+            //harmony.Patch(original, null, new HarmonyMethod(enterHousePostfix));
+           // harmony.Patch(originalOnChangeScene, null, new HarmonyMethod(prefixOnChangeScene));
+           // harmony.Patch(baseSetMeta, null, new HarmonyMethod(prefixSetMeta));
+            var build = AccessTools.Method(typeof(PlayerHouse), "Build");
+            var postfixBuild = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "BuildPostfix");
+            var prefixInteract = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "Interact");
+            var scene = AccessTools.Method(typeof(ScenePortalSpot), "OnChangescene");
+            var scenePrefix = AccessTools.Method(typeof(HarmonyPatch_ScenePortalSpot_EnterHouse), "OnChangeScenePrefix");
+            //harmony.Patch(build, null, new HarmonyMethod(postfixBuild));
+            // harmony.Patch(interactScenePortalSpot, new HarmonyMethod(prefixInteract));
+            harmony.Patch(baseSetMeta,  null, new HarmonyMethod(prefixSetMeta));
+            harmony.Patch(scene, new HarmonyMethod(scenePrefix));
+            patched = true;
+        }
+    }
+
     [HarmonyPatch(typeof(NPCAI), "HandleMemoryLossPotion")]
     class HarmonyPatch_NPCAI_HandleMemoryLossPotion
     {
@@ -1449,6 +1623,10 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
+                    if (!marriageCharacters.Contains(npcai.OriginalName))
+                    {
+                        continue;
+                    }
                     Debug.Log((object)"PolygamyMod v1 111 - 6");
                     spouses.Add(npcai.OriginalName);
                     Debug.Log((object)"PolygamyMod v1 111 - 7");
@@ -1609,6 +1787,15 @@ public class PolygamyPlugin : BaseUnityPlugin
             }
             try
             {
+                string marriedWith = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
+                if (marriedWith.IsNullOrWhiteSpace())
+                {
+                    marriedWith = "";
+                } else
+                {
+                    marriedWith = " (" + marriedWith + ")";
+                }
+                string mainSpouseText = "Change main spouse" + marriedWith;
                 if (isMarriageBed && !isCutsceneComplete)
                 {
                     string sleep = "Early";
@@ -1626,9 +1813,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                     string name0 = "Bed";
                     DialogueNode dialogueNode0 = new DialogueNode();
                     dialogueNode0.dialogueText = new List<string>
-                {
-                    "What do you want to do?"
-                };
+                    {
+                        "What do you want to do?"
+                    };
 
                     Dictionary<int, Response> dictionary0 = new Dictionary<int, Response>();
 
@@ -1641,7 +1828,7 @@ public class PolygamyPlugin : BaseUnityPlugin
                     dictionary0.Add(0, response01);
 
                     Response response02 = new Response();
-                    response02.responseText = (() => "Change main spouse");
+                    response02.responseText = (() => mainSpouseText);
                     response02.action = delegate ()
                     {
                         localizedDialogueTree0.Talk("ChangeMainSpouse1", true, null);
@@ -1663,9 +1850,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                     string name1 = "Sleep";
                     DialogueNode dialogueNode1 = new DialogueNode();
                     dialogueNode1.dialogueText = new List<string>
-                {
-                    ScriptLocalization.SleepRequestSpouse
-                };
+                    {
+                        ScriptLocalization.SleepRequestSpouse
+                    };
                     Dictionary<int, Response> dictionary1 = new Dictionary<int, Response>();
 
                     Response response04 = new Response();
@@ -1692,9 +1879,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                     string name2 = "Early";
                     DialogueNode dialogueNode2 = new DialogueNode();
                     dialogueNode2.dialogueText = new List<string>
-                {
-                    ScriptLocalization.TooEarlyToSleep
-                };
+                    {
+                        ScriptLocalization.TooEarlyToSleep
+                    };
                     localizedDialogueTree0.AddNode(name2, dialogueNode2);
 
 
@@ -1709,6 +1896,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                     foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                     {
                         loadSpouts();
+                        if (!marriageCharacters.Contains(npcai.OriginalName))
+                        {
+                            continue;
+                        }
                         spouses.Add(npcai.OriginalName);
                         string npcName = npcai.OriginalName;
                         if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + npcName))
@@ -1740,7 +1931,7 @@ public class PolygamyPlugin : BaseUnityPlugin
                             DialogueNode dialogueNode3 = new DialogueNode();
                             dialogueNode3.dialogueText = new List<string>
                             {
-                                "Who will be the main spouse?"
+                                "Who will be the main spouse?",
                             };
                             page_name = name3 + page;
                             page += 1;
@@ -1769,14 +1960,15 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                             if (current_spouse.IsNullOrWhiteSpace())
                             {
-                                if(ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                                if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                                 {
                                     if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
                                     {
                                         haveCurrentSpouse = true;
                                     }
                                 }
-                            } else
+                            }
+                            else
                             {
                                 haveCurrentSpouse = true;
                             }
@@ -1785,7 +1977,8 @@ public class PolygamyPlugin : BaseUnityPlugin
                             if (!ultraPolyGamySpouts.ContainsKey("current_spouse"))
                             {
                                 ultraPolyGamySpouts.Add("current_spouse", current_spouse);
-                            } else
+                            }
+                            else
                             {
                                 ultraPolyGamySpouts.Remove("current_spouse");
                                 ultraPolyGamySpouts.Add("current_spouse", current_spouse);
@@ -1796,17 +1989,28 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                             SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", name);
                             localizedDialogueTree0.Talk("Reenter", true, null);
+                            //loadCurrentScene();
+                            /*  HarmonyPatch_ScenePortalSpot_EnterHouse.actions.Add(1);
+                              SceneFadeType sceneFadeType = SceneFadeType.Circle;
+                              if (SingletonBehaviour<GameSave>.Instance.CurrentWorld.HousePortalSpots.TryGetValue(ScenePortalSpot.playerHouseNumber, out serializedVector2))
+                              {
+                                  SingletonBehaviour<ScenePortalManager>.Instance.ChangeScene(new Vector2(355.9167f, 124.1562f), "2playerfarm", SceneFadeType.Circle);
+                            */
+                            if (HarmonyPatch_ScenePortalSpot_EnterHouse.oldMeta != null)
+                            {
+                                HarmonyPatch_ScenePortalSpot_EnterHouse.playerHouse.SetMeta(HarmonyPatch_ScenePortalSpot_EnterHouse.oldMeta);
+                            }
+                            loadCurrentScene();
                         };
                         dictionary2.Add(i, response);
                         i += 1;
-
                     }
 
                     DialogueNode dialogueNode4 = new DialogueNode();
                     dialogueNode4.dialogueText = new List<string>
-                {
-                    "Who will be the main spouse?"
-                };
+                    {
+                        "Who will be the main spouse?",
+                    };
                     page_name = name3 + page;
 
                     Response nevermind = new Response();
@@ -1822,9 +2026,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                     string name4 = "Reenter";
                     DialogueNode dialogueNode5 = new DialogueNode();
                     dialogueNode5.dialogueText = new List<string>
-                {
-                    "Re-enter the house to apply changes."
-                };
+                    {
+                        "Re-enter the house to apply changes."
+                    };
                     localizedDialogueTree0.AddNode(name4, dialogueNode5);
 
                     localizedDialogueTree0.Talk("Bed", true, null);

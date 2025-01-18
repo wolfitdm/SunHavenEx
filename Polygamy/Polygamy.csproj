@@ -52,6 +52,9 @@
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\Libraries\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\..\..\..\Libraries\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\..\..\..\Libraries\UnityEngine.UI.dll</HintPath>
     </Reference>
