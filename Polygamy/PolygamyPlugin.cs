@@ -1401,6 +1401,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                 int count = 0;
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
+                    if (!marriageCharacters.Contains(npcai.OriginalName))
+                    {
+                        continue;
+                    }
                     spouses.Add(npcai.OriginalName);
                     count += 1;
                 }
@@ -1687,9 +1691,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                 string current_spouse = SingletonBehaviour<GameSave>.Instance.GetProgressStringCharacter("MarriedWith");
                 NPCAI realNPC = null;
                 bool haveCurrentSpouse = false;
+
                 if (current_spouse.IsNullOrWhiteSpace())
                 {
-                    if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                    if (!marriageCharacters.Contains(current_spouse))
+                    {
+                        current_spouse = marriageCharacters[0];
+                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                        haveCurrentSpouse = true;
+                    } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                     {
                         if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
                         {
@@ -1698,6 +1708,12 @@ public class PolygamyPlugin : BaseUnityPlugin
                     }
                 } else
                 {
+                    if (!marriageCharacters.Contains(current_spouse))
+                    {
+                        current_spouse = marriageCharacters[0];
+                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                    }
+
                     haveCurrentSpouse = true;
                 }
                 if (haveCurrentSpouse) {
@@ -1960,7 +1976,12 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                             if (current_spouse.IsNullOrWhiteSpace())
                             {
-                                if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
+                                if (!marriageCharacters.Contains(current_spouse))
+                                {
+                                    current_spouse = marriageCharacters[0];
+                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                    haveCurrentSpouse = true;
+                                } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                                 {
                                     if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
                                     {
@@ -1970,6 +1991,11 @@ public class PolygamyPlugin : BaseUnityPlugin
                             }
                             else
                             {
+                                if (!marriageCharacters.Contains(current_spouse))
+                                {
+                                    current_spouse = marriageCharacters[0];
+                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                }
                                 haveCurrentSpouse = true;
                             }
 
@@ -2132,6 +2158,10 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
+                    if (!marriageCharacters.Contains(npcai.OriginalName))
+                    {
+                        continue;
+                    }
                     spouses.Add(npcai.OriginalName);
                     count += 1;
                 }
