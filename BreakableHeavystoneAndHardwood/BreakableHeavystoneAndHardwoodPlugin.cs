@@ -5,15 +5,15 @@ using HarmonyLib;
 using Wish;
 using UnityEngine;
 
+using System;
+
 namespace BreakableHeavystoneAndHardwood;
 
-[BepInPlugin(pluginGuid, pluginName, pluginVersion)]
+
+[BepInPlugin("vurawnica.sunhaven.breakableheavystoneandhardwood", "BreakableHeavystoneAndHardwood", "0.0.2")]
 public class BreakableHeavystoneAndHardwoodPlugin : BaseUnityPlugin
 {
-    private const string pluginGuid = "vurawnica.sunhaven.breakableheavystoneandhardwood";
-    private const string pluginName = "BreakableHeavystoneAndHardwood";
-    private const string pluginVersion = "0.0.2";
-    private Harmony m_harmony = new Harmony(pluginGuid);
+    private Harmony m_harmony = new Harmony("vurawnica.sunhaven.breakableheavystoneandhardwood");
     public static ManualLogSource logger;
 
 	private static ConfigEntry<float> m_required_power;
@@ -22,32 +22,30 @@ public class BreakableHeavystoneAndHardwoodPlugin : BaseUnityPlugin
     {
         // Plugin startup logic
         BreakableHeavystoneAndHardwoodPlugin.logger = this.Logger;
-        logger.LogInfo((object) $"Plugin {pluginName} is loaded!");
+        logger.LogInfo((object) $"Plugin BreakableHeavystoneAndHardwood is loaded!");
         m_required_power = this.Config.Bind<float>("General", "Required Tool Level for Heavystone/Hardwood", 0, "3 is the vanilla value indicating adamant, 0 is the default for this mod");
 		this.m_harmony.PatchAll();
 	}
 
     [HarmonyPatch(typeof(Rock), "Hit")]
-    class HarmonyPatch_Rock_Hit
+    [HarmonyPrefix]
+    public static bool HarmonyPatch_Rock_Hit_Prefix(float damage, float power, bool crit, bool hitFromLocalPlayer, bool homeIn, float rustyKeyDropMultiplier, bool brokeUsingPickaxe, ref float ___requiredPower)
     {
-        private static void Prefix(ref float ____requiredPower)
+        if (___requiredPower != 0)
         {
-            if(____requiredPower != 0)
-            {
-                ____requiredPower = m_required_power.Value;
-            }
+            ___requiredPower = m_required_power.Value;
         }
+        return true;
     }
 
     [HarmonyPatch(typeof(Wood), "Hit")]
-    class HarmonyPatch_Wood_Hit
+    [HarmonyPrefix]
+    public static bool HarmonyPatch_Wood_Hit_Prefix(float damage, float power, bool crit, bool hitFromLocalPlayer, bool homeIn, ref float ___requiredPower)
     {
-        private static void Prefix(ref float ____requiredPower)
+        if (___requiredPower != 0)
         {
-            if(____requiredPower != 0)
-            {
-                ____requiredPower = m_required_power.Value;
-            }
+            ___requiredPower = m_required_power.Value;
         }
+        return true;
     }
 }

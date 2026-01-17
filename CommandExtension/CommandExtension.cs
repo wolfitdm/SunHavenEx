@@ -1,25 +1,25 @@
 using BepInEx;
+using BepInEx.Configuration;
+using BepInEx.Logging;
 using HarmonyLib;
+using MemoryPack;
+using PSS;
 using QFSW.QC;
 using QFSW.QC.Utilities;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
-using UnityEngine;
-using System.IO;
-using Wish;
 using System.Runtime.Remoting.Messaging;
-using PSS;
-using System.Collections;
-using System.Threading;
 using System.Security.Policy;
-using KeepAlive;
-using BepInEx.Logging;
-using BepInEx.Configuration;
-using ZeroFormatter;
+using System.Text.RegularExpressions;
+using System.Threading;
 using TinyJson;
+using UnityEngine;
+using Wish;
+using ZeroFormatter;
 
 namespace CommandExtension
 {
@@ -2168,8 +2168,8 @@ namespace CommandExtension
         {
             GetPlayerForCommand().SkipSleep();
             CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
-            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
-            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false, false);
+            SingletonBehaviour<GameSave>.Instance.SaveGame();
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false);
             CommandFunction_PrintToChat($"Game saved to: {CommandExtension.lastSavePath.ColorText(Color.white)}!".ColorText(Green));
             return true;
         }
@@ -2179,8 +2179,8 @@ namespace CommandExtension
         {
             GetPlayerForCommand().SkipSleep();
             CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
-            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
-            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(true, false);
+            SingletonBehaviour<GameSave>.Instance.SaveGame();
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false);
             CommandFunction_PrintToChat($"Game backup saved to: {CommandExtension.lastBackupSavePath.ColorText(Color.white)}!".ColorText(Green));
             return true;
         }
@@ -3043,8 +3043,8 @@ namespace CommandExtension
         // BACKUP SAVE GAME
         private static bool CommandFunction_BackupSaveGame()
         {
-            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
-            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(true, false);
+            SingletonBehaviour<GameSave>.Instance.SaveGame();
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false);
             CommandFunction_PrintToChat($"Game backup saved to: {CommandExtension.lastBackupSavePath.ColorText(Color.white)}!".ColorText(Green));
             return true;
         }
@@ -3052,8 +3052,8 @@ namespace CommandExtension
         // SAVE GAME
         private static bool CommandFunction_SaveGame()
         {
-            SingletonBehaviour<GameSave>.Instance.SaveGame(false);
-            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false, false);
+            SingletonBehaviour<GameSave>.Instance.SaveGame();
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false);
             CommandFunction_PrintToChat($"Game saved to: {CommandExtension.lastSavePath.ColorText(Color.white)}!".ColorText(Green));
             return true;
         }
@@ -3773,9 +3773,9 @@ namespace CommandExtension
                 {
                     string str_ = characterIndex == zero ? "" : characterIndex.ToString();
                     if (backup)
-                        path = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                        path = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
                     else
-                        path = Application.persistentDataPath + "/" + ___characterFolder + "/" + GameSave.SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
+                        path = Application.persistentDataPath + "/" + ___characterFolder + "/" + SanitizeFileName(__instance.CurrentSave.characterData.characterName) + str_ + ".save";
                     if (File.Exists(path))
                     {
                         continue;
@@ -3783,145 +3783,53 @@ namespace CommandExtension
                 }
                 return path;
         }
+
+        private static readonly string invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+        public static string SanitizeFileName(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return "Player";
+            }
+
+            return Regex.Replace(fileName, "[" + Regex.Escape(invalidChars) + "]", "");
+        }
+
+        private static string CHARACTER_FOLDER = "Saves";
+
         // WriteCharacterToFile
         #region Patch_GameSave.WriteCharacterToFile
-        [HarmonyPatch(typeof(GameSave), nameof(GameSave.WriteCharacterToFile))]
-        class Patch_GameSaveWriteCharacterToFile
+        [HarmonyPatch(typeof(SaveLoadingSystem), "WriteCharacterToFileStandalone")]
+        class Patch_WriteCharacterToFileStandalone
         {
             public static void Postfix(
-                bool backup,
+                GameSaveData data, 
+                bool backup, 
                 bool newCharacter,
-                GameSave __instance,
-                string ___characterFolder)
+                object __instance)
             {
-                bool noBackup = false;
-                CommandExtension.logger.LogDebug((object)("Execute WriteCharacterToFile!"));
-                Debug.Log((object)"Execute WriteCharacterToFile");
-                try
+                string text = Application.persistentDataPath + "/" + CHARACTER_FOLDER + "/";
+                string text2 = text + "Backups/";
+                Directory.CreateDirectory(text);
+                Directory.CreateDirectory(text2);
+                string text3 = ((data.characterData.characterIndex == 0) ? "" : data.characterData.characterIndex.ToString());
+                string path = (backup ? (text2 + SanitizeFileName(data.characterData.characterName) + text3 + ".save") : (text + SanitizeFileName(data.characterData.characterName) + text3 + ".save"));
+                if (newCharacter)
                 {
-                    Debug.Log((object)"TestCommandExtension: noBackup = true");
-                    Debug.Log((object)"Test5a");
-                    if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/"))
-                        Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/");
-                    if (!Directory.Exists(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/"))
-                        Directory.CreateDirectory(Application.persistentDataPath + "/" + ___characterFolder + "/Backups/");
-                    object obj = typeof(GameSave).GetField("fileExtension", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue((object)null);
-                    if (!backup)
+                    Debug.Log("New character");
+                    string savePath = text;
+                    int num = 0;
+                    string text4 = savePath + data.characterData.characterName + ".save";
+                    while (File.Exists(text4) && num < 255)
                     {
-                        noBackup = true;
+                        num++;
+                        text4 = savePath + data.characterData.characterName + num + ".save";
                     }
-                    if (obj == null)
-                    {
-                        noBackup = true;
-                    }
-                    if (newCharacter)
-                    {
-                        noBackup = true;
-                    }
-                    GameSaveData gameSaveData = (GameSaveData)__instance.GetType().GetMethod("CopySaveData", BindingFlags.Instance | BindingFlags.NonPublic).Invoke((object)__instance, new object[1]
-                    {
-                        (object) __instance.CurrentSave
-                    });
-                    Debug.Log((object)"TestCommandExtension: all ok until here!");
-                    if (obj == null)
-                    {
-                        Debug.Log((object)"TestCommandExtension: can not find fileExtension");
-                    }
-                    byte characterIndex = __instance.CurrentSave.characterData.characterIndex;
-                    byte zero = (byte)0;
-                    if (noBackup)
-                    {
-                        Debug.Log((object)"Test5b");
-                        string path = getSavePath(backup, __instance, ___characterFolder);
-                        Debug.Log((object)"Test5c");
-                        if (newCharacter)
-                        {
-                            int num;
-                            object[] objArray;
-                            for (num = 0; File.Exists(path) && num < (int)byte.MaxValue; path = string.Concat(objArray))
-                            {
-                                ++num;
-                                objArray = new object[7]
-                                {
-                                    (object) Application.persistentDataPath,
-                                    (object) "/",
-                                    (object) ___characterFolder,
-                                    (object) "/",
-                                    (object) __instance.CurrentSave.characterData.characterName,
-                                    (object) num,
-                                    (object) ".save"
-                                };
-                            }
-                            gameSaveData.characterData.characterIndex = (byte)num;
-                            __instance.CurrentSave.characterData.characterIndex = (byte)num;
-                        }
-                        Debug.Log((object)"Test5d");
-                        byte[] bytes1 = ZeroFormatterSerializer.Serialize<GameSaveData>(gameSaveData);
-                        Debug.Log((object)"Test5e");
-                        byte[] bytes2 = GameSave.CompressBytes(bytes1);
-                        Debug.Log((object)"Test5f");
-                        Debug.Log((object)("Write to file " + (object)gameSaveData.characterData.characterIndex));
-                        File.WriteAllBytes(path, bytes2);
-                        Debug.Log((object)"Test5g");
-                        CommandExtension.logger.LogDebug((object)("Writing save to: " + path));
-                        CommandExtension.lastSavePath = path;
-                        return;
-                    } 
-                    int num1 = DayCycle.DayFromTime(gameSaveData.worldData.time);
-                    if (gameSaveData.worldData.time.Hour < 6)
-                        --num1;
-                    int num9 = gameSaveData.worldData.time.Minute; 
-                    int num10 = gameSaveData.worldData.time.Second;
-                    int num12 = gameSaveData.worldData.time.Year;
-                    int num13 = gameSaveData.worldData.time.Month;
-                    int num14 = gameSaveData.worldData.time.Hour;
-                    string str = gameSaveData.characterData.characterIndex == (byte)0 ? "" : gameSaveData.characterData.characterIndex.ToString();
-                    string path1 = Application.persistentDataPath + "/" + ___characterFolder + "/Backups/" + Regex.Replace(gameSaveData.characterData.characterName, "<|>|=|#", "") + str;
-                    if (!Directory.Exists(path1))
-                    {
-                        Directory.CreateDirectory(path1);
-                    }
-                    string path2 = path1 + "_year_" + num12.ToString() + "_month_" + num13.ToString()  + "_day_" + num1.ToString() + "_hour_" + num14.ToString() + "_min_" + num9.ToString() + "_sec_" + num10.ToString() + "." + obj?.ToString();
-                    Debug.Log((object)"Path2");
-                    Debug.Log((object)path2);
-                    CommandExtension.logger.LogDebug((object)(path2));
-                    if (File.Exists(path2))
-                    {
-                        CommandExtension.lastBackupSavePath = path2;
-                        return;
-                    }
-                    CommandExtension.logger.LogDebug((object)("Writing backup to: " + path2));
-                    byte[] bytes = GameSave.CompressBytes(ZeroFormatterSerializer.Serialize<GameSaveData>(gameSaveData));
-                    File.WriteAllBytes(path2, bytes);
-                    CommandExtension.lastBackupSavePath = path2;
-                    foreach (string file in Directory.GetFiles(path1, "day*." + obj?.ToString(), SearchOption.TopDirectoryOnly))
-                    {
-                        if (CommandExtension.DontDeleteBackups.Value)
-                        {
-                            CommandExtension.logger.LogDebug((object)("Don't delete files!"));
-                            break;
-                        }
-                        Match match = Regex.Match(file, "day(\\d+)\\.");
-                        if (match.Success)
-                        {
-                            int num2 = int.Parse(match.Groups[1].Value);
-                            if (num2 != 0)
-                            {
-                                int num3 = num1 - num2;
-                                CommandExtension.logger.LogDebug((object)string.Format("Found backup from day {0} with path {1}, it's {2} days old", (object)num2, (object)file, (object)num3));
-                                if (num3 > CommandExtension.RetentionDays.Value)
-                                {
-                                    CommandExtension.logger.LogDebug((object)("Deleting " + file + " due to being too old"));
-                                    File.Delete(file);
-                                }
-                            }
-                        }
-                    }
+
+                    data.characterData.characterIndex = (byte)num;
+                    path = text4;
                 }
-                catch (Exception ex)
-                {
-                    CommandExtension.logger.LogError((object)string.Format("Plugin {0} error in WriteCharacterToFile: {1}", (object)"CommandExtension", (object)ex));
-                }
+                CommandExtension.lastBackupSavePath = path;
             }
         }
         #endregion

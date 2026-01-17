@@ -1,21 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BepInEx;
-using HarmonyLib;
-using QFSW.QC;
-using QFSW.QC.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using System.IO;
 using Wish;
-using System.Runtime.Remoting.Messaging;
 
 namespace CommandExtension
 {

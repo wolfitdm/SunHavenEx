@@ -1,7 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net4</TargetFramework>
     <AssemblyName>vurawnica.sunhaven.Polygamy</AssemblyName>
     <Description>Polygamy</Description>
     <Version>0.0.3</Version>
@@ -12,6 +11,7 @@
       https://nuget.bepinex.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>Polygamy</RootNamespace>
+    <TargetFramework>net48</TargetFramework>
   </PropertyGroup>
   
 <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -31,40 +31,50 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="BepInEx.Core" Version="5.*" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
-  </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>..\lib\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>..\lib\BepInEx.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Preloader">
+      <HintPath>..\lib\BepInEx.Preloader.dll</HintPath>
+    </Reference>
+    <Reference Include="netstandard">
+      <HintPath>..\lib\netstandard.dll</HintPath>
+    </Reference>
     <Reference Include="Sirenix.Serialization">
-      <HintPath>..\..\..\..\Libraries\Sirenix.Serialization.dll</HintPath>
+      <HintPath>..\lib\Sirenix.Serialization.dll</HintPath>
     </Reference>
     <Reference Include="SunHaven.core">
-      <HintPath>..\..\..\..\Libraries\SunHaven.Core.dll</HintPath>
+      <HintPath>..\lib\SunHaven.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="SunHaven.External">
+      <HintPath>..\lib\SunHaven.External.dll</HintPath>
+    </Reference>
+    <Reference Include="SunHaven.Loading">
+      <HintPath>..\lib\SunHaven.Loading.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\Libraries\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\lib\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\Libraries\UnityEngine.dll</HintPath>
+      <HintPath>..\lib\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
-      <HintPath>..\..\..\..\Libraries\UnityEngine.Physics2DModule.dll</HintPath>
+      <HintPath>..\lib\UnityEngine.Physics2DModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\..\Libraries\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\lib\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="0Harmony, Version=2.9.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Libraries\0Harmony.dll</HintPath>
+      <HintPath>..\lib\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\Libraries\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\lib\Assembly-CSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
