@@ -45,7 +45,7 @@ namespace CommandExtension
             public const float timeMultiplier = 0.2F;
         }
         // COMMANDS
-        public const string CmdPrefix = "!"; // just the prefix, no command
+        public const string CmdPrefix = "!!"; // just the prefix, no command
         public const string CmdHelp = CmdPrefix + "help";
         public const string CmdMineReset = CmdPrefix + "minereset";
         public const string CmdPause = CmdPrefix + "pause";
