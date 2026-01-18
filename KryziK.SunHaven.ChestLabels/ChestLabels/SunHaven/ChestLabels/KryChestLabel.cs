@@ -115,7 +115,7 @@ namespace KryziK.SunHaven.ChestLabels
       int result;
       Action<ItemData> itemDataFunc = (i) => ChestLabelsItemDataFunc(this, i);
       Action itemFailed = () => ChestLabelItemDataFailedFunc();
-            if (strArray.Length == 1 || !int.TryParse(strArray[0], out result) || Database.ValidID(result))
+            if (strArray.Length == 1 || !int.TryParse(strArray[0], out result) || !Database.ValidID(result))
       {
         this.Label.text = text;
         this.HasImage = false;

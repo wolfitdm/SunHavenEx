@@ -25,12 +25,12 @@ namespace CommandExtension
 {
     public class PluginInfo
     {
-        public const string PLUGIN_AUTHOR = "Rx4Byte";
-        public const string PLUGIN_NAME = "Command Extension";
-        public const string PLUGIN_GUID = "com.Rx4Byte.CommandExtension";
+        public const string PLUGIN_AUTHOR = "Rx4ByteAndWerriReloaded";
+        public const string PLUGIN_NAME = "Command Extension Werri";
+        public const string PLUGIN_GUID = "com.Rx4ByteAndWerriReloaded.CommandExtension";
         public const string PLUGIN_VERSION = "1.5.3";
     }
-    [CommandPrefix("!")]
+    [CommandPrefix(".")]
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public partial class CommandExtension : BaseUnityPlugin
     {
@@ -45,7 +45,7 @@ namespace CommandExtension
             public const float timeMultiplier = 0.2F;
         }
         // COMMANDS
-        public const string CmdPrefix = "!!"; // just the prefix, no command
+        public const string CmdPrefix = "."; // just the prefix, no command
         public const string CmdHelp = CmdPrefix + "help";
         public const string CmdMineReset = CmdPrefix + "minereset";
         public const string CmdPause = CmdPrefix + "pause";
@@ -55,6 +55,11 @@ namespace CommandExtension
         public const string CmdOrbs = CmdPrefix + "orbs";
         public const string CmdTickets = CmdPrefix + "tickets";
         public const string CmdSetDate = CmdPrefix + "time";
+        public const string CmdDate = CmdPrefix + "date";
+        public const string CmdHour = CmdPrefix + "hour";
+        public const string CmdDay = CmdPrefix + "day";
+        public const string CmdClear = CmdPrefix + "clear";
+        public const string CmdIdonHover = CmdPrefix + "idonhover";
         public const string CmdWeather = CmdPrefix + "weather";
         public const string CmdDevKit = CmdPrefix + "devkit";
         public const string CmdJumper = CmdPrefix + "jumper";
@@ -129,7 +134,7 @@ namespace CommandExtension
             new Command(CmdOrbs,                    "give or remove Orbs",                                                      CommandState.None),
             new Command(CmdTickets,                 "give or remove Tickets",                                                   CommandState.None),
             new Command(CmdSetDate,                 "set HOURE '6-23' e.g. 'set h 12'\nset DAY '1-28' e.g. 'set d 12'",         CommandState.None),
-            new Command(CmdWeather,                 "'!weather [raining|heatwave|clear]'",                                      CommandState.None),
+            new Command(CmdWeather,                 "'.weather [raining|heatwave|clear]'",                                      CommandState.None),
             new Command(CmdDevKit,                  "get dev items",                                                            CommandState.None),
             new Command(CmdJumper,                  "jump over object's (actually noclip while jump)",                          CommandState.Deactivated),
             new Command(CmdState,                   "print activ commands",                                                     CommandState.None),
@@ -177,7 +182,12 @@ namespace CommandExtension
             new Command(CmdGetTp,                   "Teleport to a setted tp point!",                                           CommandState.None),
             new Command(CmdListTp,                  "List your tp points!",                                                     CommandState.None),
             new Command(CmdMainSp,                  "Change or see your main spouse!",                                          CommandState.None),
-        };
+            new Command(CmdClear,                   "Clears chat (also fixes broken chat).",                                    CommandState.None),
+            new Command(CmdDay,                     "Sets the current day. -> .day <value>",                                    CommandState.None),
+            new Command(CmdHour,                    "Sets the current hour. -> .hour <value>",                                  CommandState.None),
+            new Command(CmdDate,                    "Sets the current date. -> .date [hour|day] <value>",                       CommandState.None),
+
+    };
         #endregion
 
         // QUEST ID's
@@ -1409,7 +1419,7 @@ namespace CommandExtension
         private static bool CheckIfCommandDisplayChatBubble(string mayCommand)
         {
             mayCommand = mayCommand.ToLower();
-            if (mayCommand[0] != '!' || GetPlayerForCommand() == null && !mayCommand.Contains(CmdName))
+            if (mayCommand[0] != '.' || GetPlayerForCommand() == null && !mayCommand.Contains(CmdName))
                 return false;
             foreach (var command in Commands)
             {
@@ -1426,7 +1436,7 @@ namespace CommandExtension
         {
             String originalMayCommand = mayCommand;
             mayCommand = mayCommand.ToLower();
-            if ((mayCommand[0] != '!' || GetPlayerForCommand() == null) && !mayCommand.Contains(CmdName))
+            if ((mayCommand[0] != '.' || GetPlayerForCommand() == null) && !mayCommand.Contains(CmdName))
                 return false;
 
             string[] mayCommandParam = mayCommand.Split(' ');
@@ -1471,6 +1481,12 @@ namespace CommandExtension
 
                 case CmdSetDate:
                     return CommandFunction_ChangeDate(mayCommand);
+
+                case CmdHour:
+                    return CommandFunction_Hour(mayCommand);
+
+                case CmdDay:
+                    return CommandFunction_Day(mayCommand);
 
                 case CmdWeather:
                     return CommandFunction_ChangeWeather(mayCommand);
@@ -1609,6 +1625,12 @@ namespace CommandExtension
 
                 case CmdMainSp:
                     return CommandFunction_MainSp(originalMayCommandParam);
+
+                case CmdClear:
+                    return CommandFunction_ClearChatConsole();
+
+                case CmdDate:
+                    return CommandFunction_Date(mayCommand);
 
                 // no valid command found
                 default:
@@ -3183,6 +3205,100 @@ namespace CommandExtension
             return true;
         }
 
+        // Clear chat console
+        private static bool CommandFunction_ClearChatConsole()
+        {
+            QuantumConsole.Instance.ClearConsole();
+            return true;
+        }
+
+        // Set Day
+        public static bool CommandFunction_Day(string commandInput)
+        {
+            string[] commandTokens = commandInput.Split(' ');
+
+            if (commandTokens.Length < 2 || !int.TryParse(commandTokens[1], out int newDay))
+            {
+                CommandFunction_PrintToChat($"Sets the current day. -> .day <value>".ColorText(Color.red));
+                return false;
+            }
+
+            if (newDay < 1 || newDay > 28) // 1-28 
+            {
+                CommandFunction_PrintToChat($"Day must be between {"1-28".ColorText(Color.white)}!".ColorText(Color.red));
+                return false;
+            }
+
+            DayCycle date = DayCycle.Instance;
+            if (date == null)
+            {
+                CommandFunction_PrintToChat(($"DayCycle.Instance is null!".ColorText(Color.red)));
+                return false;
+            }
+
+            date.Time = new DateTime(date.Time.Year, date.Time.Month, newDay, date.Time.Hour, date.Time.Minute, date.Time.Second, date.Time.Millisecond, date.Time.Kind);
+            _ = typeof(DayCycle).GetMethod("SetInitialTime", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(DayCycle.Instance, null);
+            CommandFunction_PrintToChat($"Day set to {newDay.ToString().ColorText(Color.white)}!".ColorText(Color.green));
+            return true;
+        }
+
+        // Set Hour
+        public static bool CommandFunction_Hour(string commandInput)
+        {
+            string[] commandTokens = commandInput.Split(' ');
+
+            if (commandTokens.Length < 2 || !int.TryParse(commandTokens[1], out int newHour))
+            {
+                CommandFunction_PrintToChat($"Sets the current hour. -> .hour <value>".ColorText(Color.red));
+                return false;
+            }
+
+            if (newHour < 6 || newHour > 22) // 6-23 
+            {
+                CommandFunction_PrintToChat($"Hour must be between {"6-23".ColorText(Color.white)}!".ColorText(Color.red));
+                return false;
+            }
+
+            DayCycle date = DayCycle.Instance;
+            if (date == null)
+            {
+                CommandFunction_PrintToChat(($"DayCycle.Instance is null!".ColorText(Color.red)));
+                return false;
+            }
+
+            date.Time = new DateTime(date.Time.Year, date.Time.Month, date.Time.Day, newHour, date.Time.Minute, date.Time.Second, date.Time.Millisecond);
+            CommandFunction_PrintToChat($"Hour set to {newHour.ToString().ColorText(Color.white)}!".ColorText(Color.green));
+            return true;
+        }
+
+        // Set Date
+        public static bool CommandFunction_Date(string commandInput)
+        {
+            string[] commandTokens = commandInput.Split(' ');
+
+            if (commandTokens.Length < 3 || !int.TryParse(commandTokens[2], out int newDayOrHour))
+            {
+                CommandFunction_PrintToChat($"Sets the current date. -> .date [hour|day] <value>".ColorText(Color.red));
+                return false;
+            }
+
+            switch(commandTokens[1])
+            {
+                case "hour":
+                    return CommandFunction_Hour($"hour {newDayOrHour}");
+
+                case "day":
+                    return CommandFunction_Hour($"day {newDayOrHour}");
+
+                default:
+                    {
+                        CommandFunction_PrintToChat($"Must be day or hour -> .date [hour|day] <value>".ColorText(Color.red));
+                        return false;
+                    }
+
+            }
+        }
+
         #endregion
 
         // duplicated "command methodes" (no functions) to use the in-game COMMAND feature
@@ -3406,6 +3522,26 @@ namespace CommandExtension
 
         [Command("msp", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
         private static void fm54(string OPTIONAL_spouse_to_set)
+        {
+        }
+
+        [Command("clear", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm55(string INFO_Clear_the_chat_Console)
+        {
+        }
+
+        [Command("day", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm56(string value)
+        {
+        }
+
+        [Command("hour", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm57(string value)
+        {
+        }
+
+        [Command("date", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm58(string DayOrHoure_and_Value)
         {
         }
         #endregion
@@ -3632,12 +3768,12 @@ namespace CommandExtension
                         ranOnceOnPlayerSpawn++;
                     else if (ranOnceOnPlayerSpawn == 2)
                     {
-                        CommandFunction_PrintToChat("> Command Extension Active! type '!help' for command list".ColorText(Color.magenta) + "\n -----------------------------------------------------------------".ColorText(Color.black));
+                        CommandFunction_PrintToChat("> Command Extension Werri Active! type '.help' for command list".ColorText(Color.magenta) + "\n -----------------------------------------------------------------".ColorText(Color.black));
                         ranOnceOnPlayerSpawn++;
                         // enable test helper
                         if (debug)
                         {
-                            CommandFunction_PrintToChat("debug: enable cheat commands".ColorText(Color.magenta));
+                            CommandFunction_PrintToChat("werri debug: enable cheat commands".ColorText(Color.magenta));
                             CommandFunction_Jumper();
                             CommandFunction_InfiniteMana();
                             CommandFunction_InfiniteAirSkips();
