@@ -17,7 +17,9 @@ using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Threading;
 using TinyJson;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using Wish;
 using ZeroFormatter;
 
@@ -108,6 +110,9 @@ namespace CommandExtension
         public const string CmdGetTp = CmdPrefix + "gettp";
         public const string CmdListTp = CmdPrefix + "listtp";
         public const string CmdMainSp = CmdPrefix + "msp";
+        public const string CmdResetSkillPoints = CmdPrefix + "resetskillpoints";
+        public const string CmdUnlimitedSkillPoints = CmdPrefix + "unlimitedskillpoints";
+        public const string CmdListSkills = CmdPrefix + "listskills";
         public enum CommandState { None, Activated, Deactivated }
         // COMMAND CLASS
         public class Command
@@ -186,8 +191,10 @@ namespace CommandExtension
             new Command(CmdDay,                     "Sets the current day. -> .day <value>",                                    CommandState.None),
             new Command(CmdHour,                    "Sets the current hour. -> .hour <value>",                                  CommandState.None),
             new Command(CmdDate,                    "Sets the current date. -> .date [hour|day] <value>",                       CommandState.None),
-
-    };
+            new Command(CmdUnlimitedSkillPoints,    "Set skill to unlimited skill points e.g .unlimitedskillpoints Fishing",    CommandState.None),
+            new Command(CmdResetSkillPoints,        "Set skill to reset skill points e.g .resetskillpoints Fishing",            CommandState.None),
+            new Command(CmdListSkills,              "List all skills",                                                          CommandState.None),
+        };
         #endregion
 
         // QUEST ID's
@@ -1390,6 +1397,7 @@ namespace CommandExtension
             CommandExtension.DontDeleteBackups = this.Config.Bind<bool>("General.SaveBackups", "Do not delete backups", true,  "Do not delete backups");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
             Array.Sort(Commands, (x, y) => x.Name.CompareTo(y.Name));
+            initProfessionStats();
         }
         private void Update()
         {
@@ -1632,6 +1640,14 @@ namespace CommandExtension
                 case CmdDate:
                     return CommandFunction_Date(mayCommand);
 
+                case CmdResetSkillPoints:
+                    return CommandFunction_ResetSkillPoints(mayCommand);
+
+                case CmdUnlimitedSkillPoints:
+                    return CommandFunction_UnlimitedSkillPoints(mayCommand);
+
+                case CmdListSkills:
+                    return CommandFunction_ListSkills();
                 // no valid command found
                 default:
                     return false;
@@ -3276,27 +3292,173 @@ namespace CommandExtension
         {
             string[] commandTokens = commandInput.Split(' ');
 
-            if (commandTokens.Length < 3 || !int.TryParse(commandTokens[2], out int newDayOrHour))
+            int newDayOrHour1 = -1;
+            int newDayOrHour2 = -1;
+            string command1 = "";
+            string command2 = "";
+
+            if (commandTokens.Length < 3 && commandTokens.Length < 5)
             {
                 CommandFunction_PrintToChat($"Sets the current date. -> .date [hour|day] <value>".ColorText(Color.red));
                 return false;
             }
 
-            switch(commandTokens[1])
+            if (commandTokens.Length > 2)
             {
-                case "hour":
-                    return CommandFunction_Hour($"hour {newDayOrHour}");
-
-                case "day":
-                    return CommandFunction_Hour($"day {newDayOrHour}");
-
-                default:
-                    {
-                        CommandFunction_PrintToChat($"Must be day or hour -> .date [hour|day] <value>".ColorText(Color.red));
-                        return false;
-                    }
-
+                if (int.TryParse(commandTokens[2], out int newDayOrHour))
+                {
+                    newDayOrHour1 = newDayOrHour;
+                }
+                command1 = commandTokens[1];
             }
+
+            if (commandTokens.Length > 4)
+            {
+                if (int.TryParse(commandTokens[4], out int newDayOrHourX))
+                {
+                    newDayOrHour2 = newDayOrHourX;
+                }
+                command2 = commandTokens[3];
+            }
+
+            bool set1 = true;
+            bool set2 = true;
+
+            if (command1 != "")
+            {
+                switch (command1)
+                {
+                    case "hour":
+                        set1 = CommandFunction_Hour($"hour {newDayOrHour1}");
+                        break;
+
+                    case "day":
+                        set1 = CommandFunction_Day($"day {newDayOrHour1}");
+                        break;
+
+                    default:
+                        set1 = true;
+                        break;
+                }
+            }
+
+            if (command2 != "")
+            {
+                switch (command2)
+                {
+                    case "hour":
+                        set2 = CommandFunction_Hour($"hour {newDayOrHour2}");
+                        break;
+
+                    case "day":
+                        set2 = CommandFunction_Day($"day {newDayOrHour2}");
+                        break;
+
+                    default:
+                        set2 = true;
+                        break;
+                }
+            }
+
+            if (!set1 && !set2) 
+            {
+               CommandFunction_PrintToChat($"Must be day or hour -> .date [hour|day] <value>".ColorText(Color.red));
+               return false;
+            }
+
+            return true;
+        }
+
+        #endregion
+
+        // Reset Skill Points
+        public static bool CommandFunction_ResetSkillPoints(string commandInput)
+        {
+            string[] commandTokens = commandInput.Split(' ');
+
+            if (commandTokens.Length != 2)
+            {
+                CommandFunction_PrintToChat($".resetskillpoints Fishing".ColorText(Color.red));
+                return false;
+            }
+
+            if (commandTokens[1] == "all")
+            {
+                string[] names = Enum.GetNames(typeof(ProfessionType));
+                int length = names != null ? names.Length : 0;
+                for (int i = 0; i < length; i++)
+                {
+                    if (Enum.TryParse(names[i], true, out ProfessionType professionTypeX))
+                    {
+                        if (m_reset_buttons.ContainsKey(professionTypeX))
+                        {
+                            Action action = m_reset_buttons[professionTypeX];
+                            action.Invoke();
+                        }
+                    }
+                }
+                return true;
+            }
+
+            if (Enum.TryParse(commandTokens[1], true, out ProfessionType professionType))
+            {
+                if(m_reset_buttons.ContainsKey(professionType))
+                {
+                    Action action = m_reset_buttons[professionType];
+                    action.Invoke();
+                }
+            }
+
+            return true;
+        }
+
+        // Unlimited Skill Points
+        public static bool CommandFunction_UnlimitedSkillPoints(string commandInput)
+        {
+            string[] commandTokens = commandInput.Split(' ');
+
+            if (commandTokens.Length != 2)
+            {
+                CommandFunction_PrintToChat($".unlimitedskillpoints Fishing".ColorText(Color.red));
+                return false;
+            }
+
+            if (commandTokens[1] == "all")
+            {
+                string[] names = Enum.GetNames(typeof(ProfessionType));
+                int length = names != null ? names.Length : 0;
+                for (int i = 0; i < length; i++)
+                {
+                    if (Enum.TryParse(names[i], true, out ProfessionType professionTypeX))
+                    {
+                        if (m_reset_buttons_2.ContainsKey(professionTypeX))
+                        {
+                            Action action = m_reset_buttons_2[professionTypeX];
+                            action.Invoke();
+                        }
+                    }
+                }
+                return true;
+            }
+
+            if (Enum.TryParse(commandTokens[1], true, out ProfessionType professionType))
+            {
+                if (m_reset_buttons_2.ContainsKey(professionType))
+                {
+                    Action action = m_reset_buttons_2[professionType];
+                    action.Invoke();
+                }
+            }
+
+            return true;
+        }
+
+        // List Skills
+        public static bool CommandFunction_ListSkills()
+        {
+            string[] names = Enum.GetNames(typeof(ProfessionType));
+            CommandFunction_PrintToChat(String.Join(", ", names));
+            return true;
         }
 
         #endregion
@@ -3544,7 +3706,21 @@ namespace CommandExtension
         private static void fm58(string DayOrHoure_and_Value)
         {
         }
-        #endregion
+
+        [Command("resetskillpoints", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm59(string Fishing)
+        {
+        }
+
+        [Command("unlimitedskillpoints", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm60(string Fishing)
+        {
+        }
+
+        [Command("listskills", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm61(string INFO_List_Skills)
+        {
+        }
         #endregion
 
         #region Patches
@@ -3893,6 +4069,391 @@ namespace CommandExtension
             {
                 if (debug)
                     __result = __instance.id.ToString().ColorText(Color.magenta) + "\"\n\"";
+            }
+        }
+        #endregion
+
+        #region Patch_SkillReset
+        private static Dictionary<ProfessionType, Action> m_reset_buttons = new Dictionary<ProfessionType, Action>();
+        private static Dictionary<ProfessionType, Action> m_reset_buttons_2 = new Dictionary<ProfessionType, Action>();
+        private static Dictionary<string, int> professionStats = new Dictionary<string, int>();
+
+        private static void initProfessionStats()
+        {
+            professionStats = new Dictionary<string, int>();
+
+            professionStats.Add("Exploration1a", 3);
+            professionStats.Add("Exploration1b", 3);
+            professionStats.Add("Exploration1c", 3);
+            professionStats.Add("Exploration1d", 2);
+
+
+            professionStats.Add("Exploration2a", 3);
+            professionStats.Add("Exploration2b", 3);
+            professionStats.Add("Exploration2c", 3);
+            professionStats.Add("Exploration2d", 3);
+
+
+            professionStats.Add("Exploration3a", 3);
+            professionStats.Add("Exploration3b", 3);
+            professionStats.Add("Exploration3c", 3);
+            professionStats.Add("Exploration3d", 3);
+
+
+            professionStats.Add("Exploration4a", 3);
+            professionStats.Add("Exploration4b", 3);
+            professionStats.Add("Exploration4c", 3);
+            professionStats.Add("Exploration4d", 3);
+
+
+            professionStats.Add("Exploration5a", 3);
+            professionStats.Add("Exploration5b", 3);
+            professionStats.Add("Exploration5c", 3);
+            professionStats.Add("Exploration5d", 3);
+
+
+            professionStats.Add("Exploration6a", 3);
+            professionStats.Add("Exploration6b", 3);
+            professionStats.Add("Exploration6c", 3);
+            professionStats.Add("Exploration6d", 2);
+
+
+            professionStats.Add("Exploration7a", 3);
+            professionStats.Add("Exploration7b", 3);
+            professionStats.Add("Exploration7c", 2);
+            professionStats.Add("Exploration7d", 3);
+
+
+            professionStats.Add("Exploration8a", 3);
+            professionStats.Add("Exploration8b", 3);
+            professionStats.Add("Exploration8c", 3);
+            professionStats.Add("Exploration8d", 3);
+
+
+            professionStats.Add("Exploration9a", 3);
+            professionStats.Add("Exploration9b", 3);
+            professionStats.Add("Exploration9c", 3);
+            professionStats.Add("Exploration9d", 3);
+
+
+            professionStats.Add("Exploration10a", 3);
+            professionStats.Add("Exploration10b", 3);
+            professionStats.Add("Exploration10c", 3);
+            professionStats.Add("Exploration10d", 3);
+
+
+            professionStats.Add("Farming1a", 3);
+            professionStats.Add("Farming1b", 3);
+            professionStats.Add("Farming1c", 3);
+            professionStats.Add("Farming1d", 3);
+
+
+            professionStats.Add("Farming2a", 3);
+            professionStats.Add("Farming2b", 3);
+            professionStats.Add("Farming2c", 2);
+            professionStats.Add("Farming2d", 3);
+
+
+            professionStats.Add("Farming3a", 3);
+            professionStats.Add("Farming3b", 3);
+            professionStats.Add("Farming3c", 3);
+            professionStats.Add("Farming3d", 2);
+
+
+            professionStats.Add("Farming4a", 3);
+            professionStats.Add("Farming4b", 3);
+            professionStats.Add("Farming4c", 3);
+            professionStats.Add("Farming4d", 3);
+
+
+            professionStats.Add("Farming5a", 3);
+            professionStats.Add("Farming5b", 1);
+            professionStats.Add("Farming5c", 3);
+            professionStats.Add("Farming5d", 3);
+
+
+            professionStats.Add("Farming6a", 3);
+            professionStats.Add("Farming6b", 3);
+            professionStats.Add("Farming6c", 3);
+            professionStats.Add("Farming6d", 3);
+
+
+            professionStats.Add("Farming7a", 3);
+            professionStats.Add("Farming7b", 3);
+            professionStats.Add("Farming7c", 1);
+            professionStats.Add("Farming7d", 3);
+
+
+            professionStats.Add("Farming8a", 3);
+            professionStats.Add("Farming8b", 3);
+            professionStats.Add("Farming8c", 3);
+            professionStats.Add("Farming8d", 3);
+
+
+            professionStats.Add("Farming9a", 3);
+            professionStats.Add("Farming9b", 1);
+            professionStats.Add("Farming9c", 3);
+            professionStats.Add("Farming9d", 3);
+
+
+            professionStats.Add("Farming10a", 3);
+            professionStats.Add("Farming10b", 3);
+            professionStats.Add("Farming10c", 3);
+            professionStats.Add("Farming10d", 1);
+
+
+            professionStats.Add("Mining1a", 3);
+            professionStats.Add("Mining1b", 3);
+            professionStats.Add("Mining1c", 3);
+            professionStats.Add("Mining1d", 3);
+
+
+            professionStats.Add("Mining2a", 3);
+            professionStats.Add("Mining2b", 3);
+            professionStats.Add("Mining2c", 3);
+            professionStats.Add("Mining2d", 3);
+
+
+            professionStats.Add("Mining3a", 3);
+            professionStats.Add("Mining3b", 3);
+            professionStats.Add("Mining3c", 2);
+            professionStats.Add("Mining3d", 3);
+
+
+            professionStats.Add("Mining4a", 3);
+            professionStats.Add("Mining4b", 1);
+            professionStats.Add("Mining4c", 3);
+            professionStats.Add("Mining4d", 3);
+
+
+            professionStats.Add("Mining5a", 3);
+            professionStats.Add("Mining5b", 2);
+            professionStats.Add("Mining5c", 1);
+            professionStats.Add("Mining5d", 3);
+
+
+            professionStats.Add("Mining6a", 3);
+            professionStats.Add("Mining6b", 3);
+            professionStats.Add("Mining6c", 3);
+            professionStats.Add("Mining6d", 3);
+
+
+            professionStats.Add("Mining7a", 3);
+            professionStats.Add("Mining7b", 3);
+            professionStats.Add("Mining7c", 3);
+            professionStats.Add("Mining7d", 3);
+
+
+            professionStats.Add("Mining8a", 3);
+            professionStats.Add("Mining8b", 1);
+            professionStats.Add("Mining8c", 3);
+            professionStats.Add("Mining8d", 3);
+
+
+            professionStats.Add("Mining9a", 3);
+            professionStats.Add("Mining9b", 3);
+            professionStats.Add("Mining9c", 3);
+            professionStats.Add("Mining9d", 3);
+
+
+            professionStats.Add("Mining10a", 3);
+            professionStats.Add("Mining10b", 3);
+            professionStats.Add("Mining10c", 3);
+            professionStats.Add("Mining10d", 3);
+
+
+            professionStats.Add("Combat1a", 3);
+            professionStats.Add("Combat1b", 3);
+            professionStats.Add("Combat1c", 3);
+            professionStats.Add("Combat1d", 3);
+
+
+            professionStats.Add("Combat2a", 3);
+            professionStats.Add("Combat2b", 3);
+            professionStats.Add("Combat2c", 3);
+            professionStats.Add("Combat2d", 3);
+
+
+            professionStats.Add("Combat3a", 3);
+            professionStats.Add("Combat3b", 3);
+            professionStats.Add("Combat3c", 3);
+            professionStats.Add("Combat3d", 2);
+
+
+            professionStats.Add("Combat4a", 3);
+            professionStats.Add("Combat4b", 3);
+            professionStats.Add("Combat4c", 3);
+            professionStats.Add("Combat4d", 3);
+
+
+            professionStats.Add("Combat5a", 3);
+            professionStats.Add("Combat5b", 3);
+            professionStats.Add("Combat5c", 3);
+            professionStats.Add("Combat5d", 2);
+
+
+            professionStats.Add("Combat6a", 3);
+            professionStats.Add("Combat6b", 3);
+            professionStats.Add("Combat6c", 3);
+            professionStats.Add("Combat6d", 3);
+
+
+            professionStats.Add("Combat7a", 3);
+            professionStats.Add("Combat7b", 3);
+            professionStats.Add("Combat7c", 3);
+            professionStats.Add("Combat7d", 3);
+
+
+            professionStats.Add("Combat8a", 3);
+            professionStats.Add("Combat8b", 3);
+            professionStats.Add("Combat8c", 2);
+            professionStats.Add("Combat8d", 3);
+
+
+            professionStats.Add("Combat9a", 3);
+            professionStats.Add("Combat9b", 3);
+            professionStats.Add("Combat9c", 2);
+            professionStats.Add("Combat9d", 3);
+
+
+            professionStats.Add("Combat10a", 3);
+            professionStats.Add("Combat10b", 2);
+            professionStats.Add("Combat10c", 3);
+            professionStats.Add("Combat10d", 3);
+
+
+            professionStats.Add("Fishing1a", 3);
+            professionStats.Add("Fishing1b", 3);
+            professionStats.Add("Fishing1c", 3);
+
+
+            professionStats.Add("Fishing2a", 3);
+            professionStats.Add("Fishing2b", 3);
+            professionStats.Add("Fishing2c", 3);
+
+
+            professionStats.Add("Fishing3a", 3);
+            professionStats.Add("Fishing3b", 3);
+            professionStats.Add("Fishing3c", 3);
+
+
+            professionStats.Add("Fishing4a", 3);
+            professionStats.Add("Fishing4b", 3);
+            professionStats.Add("Fishing4c", 3);
+
+
+            professionStats.Add("Fishing5a", 3);
+            professionStats.Add("Fishing5b", 3);
+            professionStats.Add("Fishing5c", 3);
+
+
+            professionStats.Add("Fishing6a", 3);
+            professionStats.Add("Fishing6b", 3);
+            professionStats.Add("Fishing6c", 3);
+
+
+            professionStats.Add("Fishing7a", 3);
+            professionStats.Add("Fishing7b", 3);
+            professionStats.Add("Fishing7c", 3);
+
+
+            professionStats.Add("Fishing8a", 3);
+            professionStats.Add("Fishing8b", 1);
+            professionStats.Add("Fishing8c", 3);
+
+
+            professionStats.Add("Fishing9a", 3);
+            professionStats.Add("Fishing9b", 3);
+            professionStats.Add("Fishing9c", 1);
+
+
+            professionStats.Add("Fishing10a", 3);
+            professionStats.Add("Fishing10b", 3);
+            professionStats.Add("Fishing10c", 3);
+        }
+
+        public static void reset_profession_2(Skills skills, ProfessionType profession_type)
+        {
+            try
+            {
+                Profession profession = GameSave.Instance.CurrentSave.characterData.Professions[profession_type];
+                string profession_string = profession_type.ToString();
+                string column_string;
+                string key;
+
+                for (int column = 1; column <= 10; column++)
+                {
+                    column_string = column.ToString();
+                    foreach (char letter in "abcd")
+                    {
+                        if (profession_type == ProfessionType.Fishing && letter == 'd')
+                        {
+                            continue;
+                        }
+                        key = profession_string + column_string + letter;
+                        logger.LogInfo("** reset_profession INFO - " + key);
+                        int statsValue = 4;
+                        if (professionStats.ContainsKey(key))
+                        {
+                            if (!professionStats.TryGetValue(key, out statsValue))
+                                statsValue = 0;
+                        }
+                        profession.nodes[key.GetStableHashCode()] = statsValue;
+                    }
+                }
+                Skills.skillPointsUsed[profession_type] = 0;
+                skills.EnablePanelWithAvailableSkillPoint();
+            }
+            catch (Exception e)
+            {
+                logger.LogError("** reset_profession ERROR - " + e);
+            }
+        }
+        public static void reset_profession(Skills skills, ProfessionType profession_type)
+        {
+            try
+            {
+                Profession profession = GameSave.Instance.CurrentSave.characterData.Professions[profession_type];
+                string profession_string = profession_type.ToString();
+                string column_string;
+                string key;
+
+                for (int column = 1; column <= 10; column++)
+                {
+                    column_string = column.ToString();
+                    foreach (char letter in "abcd")
+                    {
+                        if (profession_type == ProfessionType.Fishing && letter == 'd')
+                        {
+                            continue;
+                        }
+                        key = profession_string + column_string + letter;
+                        profession.nodes[key.GetStableHashCode()] = 0;
+                    }
+                }
+                Skills.skillPointsUsed[profession_type] = 0;
+                skills.EnablePanelWithAvailableSkillPoint();
+            }
+            catch (Exception e)
+            {
+                logger.LogError("** reset_profession ERROR - " + e);
+            }
+        }
+
+        [HarmonyPatch(typeof(Skills), "SetupProfession")]
+        class HarmonyPatch_Skills_SetupProfession
+        {
+            private static void Postfix(ProfessionType profession, SkillTree panel, SkillTreeAsset skillTreeAsset, Skills __instance)
+            {
+                m_reset_buttons[profession] = () =>
+                {
+                    reset_profession(__instance, profession);
+                };
+
+                m_reset_buttons_2[profession] = () =>
+                {
+                    reset_profession_2(__instance, profession);
+                };
             }
         }
         #endregion

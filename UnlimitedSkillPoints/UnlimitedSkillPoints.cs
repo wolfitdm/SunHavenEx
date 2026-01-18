@@ -37,6 +37,7 @@ public class SelfPortraitPlugin: BaseUnityPlugin
 {
     private Harmony m_harmony = new Harmony(PluginInfo.GUID);
 	private static Dictionary<ProfessionType, GameObject> m_reset_buttons = new Dictionary<ProfessionType, GameObject>();
+    private static Dictionary<ProfessionType, GameObject> m_reset_buttons_2 = new Dictionary<ProfessionType, GameObject>();
     public static ManualLogSource logger;
     private static Dictionary<string, int> professionStats = new Dictionary<string, int>();
 
@@ -345,7 +346,7 @@ public class SelfPortraitPlugin: BaseUnityPlugin
         initProfessionStats();
     }
 
-    public static void reset_profession(Skills skills, ProfessionType profession_type) {
+    public static void reset_profession_2(Skills skills, ProfessionType profession_type) {
 		try {
 			Profession profession = GameSave.Instance.CurrentSave.characterData.Professions[profession_type];
 			string profession_string = profession_type.ToString();
@@ -375,26 +376,80 @@ public class SelfPortraitPlugin: BaseUnityPlugin
 			logger.LogError("** reset_profession ERROR - " + e);
 		}
 	}
+    public static void reset_profession(Skills skills, ProfessionType profession_type)
+    {
+        try
+        {
+            Profession profession = GameSave.Instance.CurrentSave.characterData.Professions[profession_type];
+            string profession_string = profession_type.ToString();
+            string column_string;
+            string key;
 
-	[HarmonyPatch(typeof(Skills), "SetupProfession")]
+            for (int column = 1; column <= 10; column++)
+            {
+                column_string = column.ToString();
+                foreach (char letter in "abcd")
+                {
+                    if (profession_type == ProfessionType.Fishing && letter == 'd')
+                    {
+                        continue;
+                    }
+                    key = profession_string + column_string + letter;
+                    profession.nodes[key.GetStableHashCode()] = 0;
+                }
+            }
+            Skills.skillPointsUsed[profession_type] = 0;
+            skills.EnablePanelWithAvailableSkillPoint();
+        }
+        catch (Exception e)
+        {
+            logger.LogError("** reset_profession ERROR - " + e);
+        }
+    }
+
+    [HarmonyPatch(typeof(Skills), "SetupProfession")]
 	class HarmonyPatch_Skills_SetupProfession {
 
-		private static void Postfix(Skills __instance, ProfessionType profession, SkillTree panel) {
-			try {
+		private static void Postfix(ProfessionType profession, SkillTree panel, SkillTreeAsset skillTreeAsset, Skills __instance) {
+            logger.LogInfo("all ok here xdDddd 0000000");
+            try {
 				TextMeshProUGUI _skillPointsTMP = (TextMeshProUGUI) panel.
 					GetType().
 					GetTypeInfo().
 					GetField("_skillPointsTMP", BindingFlags.Instance | BindingFlags.NonPublic).
 					GetValue(panel);
-				GameObject reset_button = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent);
-				TextMeshProUGUI label = reset_button.GetComponent<TextMeshProUGUI>();
-				reset_button.transform.position = _skillPointsTMP.transform.position + ((Vector3.down * _skillPointsTMP.GetComponent<RectTransform>().rect.height) * 1.5f);
-				label.fontSize = 12;
-				label.text = "[Unlimited]";
-				reset_button.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction) delegate {
-					reset_profession(__instance, profession);
+                if(_skillPointsTMP != null)
+                {
+                    logger.LogError("skillpointsTMP != null");
+                    logger.LogError(_skillPointsTMP.transform.parent.transform.position.ToString());
+                    _skillPointsTMP.text = "haööp";
+
+                } else
+                {
+                    logger.LogError("skillpointsTMP == null");
+                }
+                GameObject reset_button = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent);
+                reset_button.SetActive(true);
+                logger.LogInfo("all ok here xdDddd 1");
+                TextMeshProUGUI label = reset_button.GetComponent<TextMeshProUGUI>();
+                label.fontSize = 12;
+                label.text = "[Reset]";
+                reset_button.transform.position = _skillPointsTMP.transform.position - ((Vector3.down * _skillPointsTMP.GetComponent<RectTransform>().rect.height));
+                reset_button.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction)delegate {
+                    reset_profession(__instance, profession);
+                });
+                logger.LogInfo("all ok here xdDddd 33333");
+                m_reset_buttons[profession] = reset_button;
+                GameObject reset_button_2 = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent);
+                TextMeshProUGUI label_2 = reset_button_2.GetComponent<TextMeshProUGUI>();
+                label_2.fontSize = 12;
+                label_2.text = "[Unlimited]";
+                reset_button_2.transform.position = _skillPointsTMP.transform.position - ((Vector3.down * _skillPointsTMP.GetComponent<RectTransform>().rect.height) * 1.5f);
+				reset_button_2.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction) delegate {
+					reset_profession_2(__instance, profession);
 				});
-				m_reset_buttons[profession] = reset_button;
+                logger.LogInfo("all ok here xdDddd 333");
+                m_reset_buttons_2[profession] = reset_button_2;
             } catch (Exception e) {
                 logger.LogError("** HarmonyPatch_Skills_SetupProfession.Postfix ERROR - " + e);
             }
