@@ -8,6 +8,7 @@ using TMPro;
 using System.Reflection;
 using UnityEngine.Events;
 using BepInEx.Logging;
+using Steamworks;
 
 public static class PluginInfo {
 
@@ -421,35 +422,48 @@ public class SelfPortraitPlugin: BaseUnityPlugin
                 if(_skillPointsTMP != null)
                 {
                     logger.LogError("skillpointsTMP != null");
-                    logger.LogError(_skillPointsTMP.transform.parent.transform.position.ToString());
+                    logger.LogError(_skillPointsTMP.transform.parent.parent.position.ToString());
                     _skillPointsTMP.text = "haööp";
-
+                    //_skillPointsTMP.fontSize = 12;
+                    Vector3 plus = _skillPointsTMP.GetComponent<RectTransform>().rect.height * Vector3.down;
+                    Vector3 original = _skillPointsTMP.transform.parent.parent.position;
+                    //_skillPointsTMP.transform.parent.parent.position = original;
+                    logger.LogError(_skillPointsTMP.transform.parent.parent.position.ToString());
                 } else
                 {
                     logger.LogError("skillpointsTMP == null");
                 }
-                GameObject reset_button = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent);
+                Transform transform1 = Transform.Instantiate<Transform>(_skillPointsTMP.transform.parent.parent);
+                GameObject reset_button = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent.parent);
                 reset_button.SetActive(true);
                 logger.LogInfo("all ok here xdDddd 1");
                 TextMeshProUGUI label = reset_button.GetComponent<TextMeshProUGUI>();
+                float height = _skillPointsTMP.GetComponent<RectTransform>().rect.height;
+                float width = _skillPointsTMP.GetComponent<RectTransform>().rect.width;
+                width = width <= 0 ? 1 : width;
+                height = height <= 0 ? 1 : height;
                 label.fontSize = 12;
                 label.text = "[Reset]";
-                reset_button.transform.position = _skillPointsTMP.transform.position - ((Vector3.down * _skillPointsTMP.GetComponent<RectTransform>().rect.height));
+                reset_button.transform.position = reset_button.transform.position + ((Vector3.down * height) * 1.5f);
                 reset_button.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction)delegate {
                     reset_profession(__instance, profession);
                 });
                 logger.LogInfo("all ok here xdDddd 33333");
                 m_reset_buttons[profession] = reset_button;
-                GameObject reset_button_2 = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent);
+                //Transform transform2 = Transform.Instantiate<Transform>(_skillPointsTMP.transform.parent.parent);
+                GameObject reset_button_2 = GameObject.Instantiate<GameObject>(_skillPointsTMP.gameObject, _skillPointsTMP.transform.parent.parent);
+                //TextMeshProUGUI reset_button_2 = reset_button.AddComponent<TextMeshProUGUI>();
                 TextMeshProUGUI label_2 = reset_button_2.GetComponent<TextMeshProUGUI>();
                 label_2.fontSize = 12;
                 label_2.text = "[Unlimited]";
-                reset_button_2.transform.position = _skillPointsTMP.transform.position - ((Vector3.down * _skillPointsTMP.GetComponent<RectTransform>().rect.height) * 1.5f);
-				reset_button_2.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction) delegate {
+                reset_button_2.transform.position = reset_button_2.transform.position + reset_button_2.transform.position + ((Vector3.down * height) * 1.5f) + ((Vector3.right * width) * 1.5f);
+				reset_button_2.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener((UnityAction) delegate {
 					reset_profession_2(__instance, profession);
 				});
+                reset_button.GetComponent<RectTransform>().anchoredPosition = new Vector2(-350, -65);
+                reset_button_2.GetComponent<RectTransform>().anchoredPosition = new Vector2(-350, -50);
                 logger.LogInfo("all ok here xdDddd 333");
-                m_reset_buttons_2[profession] = reset_button_2;
+                m_reset_buttons_2[profession] = reset_button_2.gameObject;
             } catch (Exception e) {
                 logger.LogError("** HarmonyPatch_Skills_SetupProfession.Postfix ERROR - " + e);
             }
