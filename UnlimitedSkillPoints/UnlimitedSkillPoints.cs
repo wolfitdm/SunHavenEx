@@ -8,7 +8,6 @@ using TMPro;
 using System.Reflection;
 using UnityEngine.Events;
 using BepInEx.Logging;
-using Steamworks;
 
 public static class PluginInfo {
 
