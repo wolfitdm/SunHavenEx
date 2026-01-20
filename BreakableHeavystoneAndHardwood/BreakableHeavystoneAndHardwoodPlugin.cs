@@ -28,7 +28,7 @@ public class BreakableHeavystoneAndHardwoodPlugin : BaseUnityPlugin
         BreakableHeavystoneAndHardwoodPlugin.logger = this.Logger;
         logger.LogInfo((object) $"Plugin BreakableHeavystoneAndHardwood is loaded!");
         m_required_power = this.Config.Bind<float>("General", "Required Tool Level for Heavystone/Hardwood", 0, "3 is the vanilla value indicating adamant, 0 is the default for this mod");
-        base_damage = this.Config.Bind<float>("General", "basic damage that you cause to Heavystone/Hardwood", 0, "0 is the vanilla default value");
+        base_damage = this.Config.Bind<float>("General", "basic damage that you cause to Tree/Stone/Heavystone/Hardwood", 0, "0 is the vanilla default value");
         requiredPower = m_required_power.Value;
         baseDamage = base_damage.Value;
         if (requiredPower <= 0)
