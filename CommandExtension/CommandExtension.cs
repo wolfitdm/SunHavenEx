@@ -6,9 +6,11 @@ using MemoryPack;
 using PSS;
 using QFSW.QC;
 using QFSW.QC.Utilities;
+using Rewired;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -22,6 +24,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using Wish;
 using ZeroFormatter;
+using Player = Wish.Player;
+using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
+using static Rewired.Platforms.Custom.CustomPlatformUnifiedKeyboardSource.KeyPropertyMap;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace CommandExtension
 {
@@ -113,6 +119,9 @@ namespace CommandExtension
         public const string CmdResetSkillPoints = CmdPrefix + "resetskillpoints";
         public const string CmdUnlimitedSkillPoints = CmdPrefix + "unlimitedskillpoints";
         public const string CmdListSkills = CmdPrefix + "listskills";
+        public const string CmdSetPlayerVar = CmdPrefix + "setplayervar";
+        public const string CmdGetPlayerVar = CmdPrefix + "getplayervar";
+        public const string CmdCallPlayerFunc = CmdPrefix + "callp";
         public enum CommandState { None, Activated, Deactivated }
         // COMMAND CLASS
         public class Command
@@ -194,6 +203,9 @@ namespace CommandExtension
             new Command(CmdUnlimitedSkillPoints,    "Set skill to unlimited skill points e.g .unlimitedskillpoints Fishing",    CommandState.None),
             new Command(CmdResetSkillPoints,        "Set skill to reset skill points e.g .resetskillpoints Fishing",            CommandState.None),
             new Command(CmdListSkills,              "List all skills",                                                          CommandState.None),
+            new Command(CmdSetPlayerVar,            ".setplayervar varname varvalue",                                           CommandState.None),
+            new Command(CmdGetPlayerVar,            ".getplayervar varname",                                                    CommandState.None),
+            new Command(CmdCallPlayerFunc,          ".callp funcname",                                                          CommandState.None),
         };
         #endregion
 
@@ -1412,6 +1424,11 @@ namespace CommandExtension
         #region Get Wish.Player for command execution
         public static Player GetPlayerForCommand()
         {
+            if (Player.Instance != null)
+            {
+                return Player.Instance;
+            }
+
             Player[] players = FindObjectsOfType<Player>();
             foreach (Player player in players)
             {
@@ -1648,12 +1665,1107 @@ namespace CommandExtension
 
                 case CmdListSkills:
                     return CommandFunction_ListSkills();
+
+                case CmdSetPlayerVar:
+                    return CommandFunction_SetPlayerVar(originalMayCommandParam);
+
+                case CmdGetPlayerVar:
+                    return CommandFunction_GetPlayerVar(originalMayCommandParam);
+
+                case CmdCallPlayerFunc:
+                    return CommandFunction_CallPlayerFunc(originalMayCommandParam);
                 // no valid command found
                 default:
                     return false;
             }
         }
         #endregion
+
+        public static Type GetListElementType(object list)
+        {
+            if (list == null)
+            {
+                return null;
+            }
+
+            Type type = list.GetType();
+
+            // Check if it's a generic type and specifically a List<>
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                return type.GetGenericArguments()[0]; // First generic argument is T
+            }
+
+            return null; // Not a List<T>
+        }
+
+        public static bool isNonGenericList(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            Type type = obj.GetType();
+            // Check for non-generic list (ArrayList or implements IList but not generic)
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                return false;
+            }
+            else if (obj is IList && !type.IsGenericType)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool isGenericList(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            Type type = obj.GetType();
+            // Check for non-generic list (ArrayList or implements IList but not generic)
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                return true;
+            }
+            else if (obj is IList && !type.IsGenericType)
+            {
+                return false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public static bool isList(object obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            Type type = obj.GetType();
+            // Check for non-generic list (ArrayList or implements IList but not generic)
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                return true;
+            }
+            else if (obj is IList && !type.IsGenericType)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static string ListToString(object list, string separator = ", ")
+        {
+            if (list == null)
+                return string.Empty;
+
+            Type type = list.GetType();
+
+            // Check if it's a generic type and specifically a List<>
+            if (!type.IsGenericType || type.GetGenericTypeDefinition() != typeof(List<>))
+            {
+                return list.ToString(); // First generic argument is T
+            }
+
+            List<string> values = new List<string>();
+
+            foreach (var item in (IEnumerable)list)
+            {
+                values.Add(item.ToString());
+            }
+
+            return String.Join(separator, values.ToArray());
+        }
+        public static Type MyGetType(string originalClassName)
+        {
+            return Type.GetType(originalClassName + ",Assembly-CSharp");
+        }
+
+        static Type getEnumType(string enumtype)
+        {
+            string message = null;
+
+            Type type = null;
+
+            try
+            {
+                // Get the type of the object
+                type = MyGetType(enumtype);
+            }
+            catch (Exception e)
+            {
+                message = e.ToString();
+                logger.LogInfo(message);
+                return null;
+            }
+
+            string className = enumtype;
+            if (type == null)
+            {
+                message = "enum " + className + " not found, the dev have removed it!";
+                logger.LogInfo(message);
+                return null;
+            }
+
+            // Validate that the type is actually an enum
+            if (!type.IsEnum)
+            {
+                message = "Provided type is not an enum.";
+                logger.LogInfo(message);
+                return null;
+            }
+
+            return type;
+        }
+
+        static object getEnumByType(Type type, string enumkey)
+        {
+            string message = null;
+
+            if (type == null)
+            {
+                message = "Provided type is null and is not an enum.";
+                logger.LogInfo(message);
+                return null;
+            }
+
+            // Validate that the type is actually an enum
+            if (!type.IsEnum)
+            {
+                message = "Provided type is not an enum.";
+                logger.LogInfo(message);
+                return null;
+            }
+
+            // Validate that the enum value exists
+            bool isDefinedOne = Enum.IsDefined(type, enumkey);
+            bool isDefinedSecond = Enum.GetNames(type).Any(x => x.ToLower() == enumkey);
+            bool isDefined = isDefinedOne || isDefinedSecond;
+
+            if (!isDefined)
+            {
+                message = $"'{enumkey}' is not a valid value for {type.Name}.";
+                logger.LogInfo(message);
+                return null;
+            }
+
+            try
+            {
+                // Get the enum value object
+                object enumValue = Enum.Parse(type, enumkey, true);
+
+                // Get the underlying numeric value using reflection
+                object numericValue = Convert.ChangeType(enumValue, Enum.GetUnderlyingType(type));
+
+                return numericValue;
+            }
+            catch (Exception e)
+            {
+                message = e.ToString();
+                logger.LogInfo(message);
+                return null;
+            }
+
+            return null;
+        }
+        static object getEnum(string enumtype, string enumkey)
+        {
+            Type type = getEnumType(enumtype);
+            return getEnumByType(type, enumkey);
+        }
+        static string[] getEnumString(string typeValue)
+        {
+            char separator = '.';
+
+            if (typeValue == null)
+            {
+                return null;
+            }
+
+            if (typeValue.Length == 0)
+            {
+                return null;
+            }
+
+            if (!typeValue.Contains("" + separator))
+            {
+                return null;
+            }
+
+            // Split the string
+            string[] parts = typeValue.Split(separator);
+            if (parts.Length < 2)
+            {
+                return null;
+            }
+
+            string lastpath = parts[1];
+
+            for (int i = 2; i < parts.Length; i++)
+            {
+                lastpath = lastpath + "." + parts[i];
+            }
+
+            parts[1] = lastpath;
+
+            return new string[]
+            {
+                parts[0],
+                parts[1]
+            };
+        }
+        public static FieldInfo getFieldInfo(object obj, string field, BindingFlags flags)
+        {
+            try
+            {
+                if (obj == null)
+                {
+                    logger.LogInfo("getFieldInfo: 1 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                Type type = obj.GetType();
+
+                if (type == null)
+                {
+                    logger.LogInfo("getFieldInfo: 2 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = type.GetField(
+                    field,
+                    flags
+                );
+
+                if (fieldInfo == null)
+                {
+                    logger.LogInfo("getFieldInfo: 3 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                return fieldInfo;
+            }
+            catch (Exception e)
+            {
+                logger.LogInfo("getFieldInfo: 4 field " + field + " not found, the dev have removed it!");
+                logger.LogError(e.ToString());
+                return null;
+            }
+        }
+
+        public static PropertyInfo getPropertyInfo(object obj, string field, BindingFlags flags)
+        {
+            if (obj == null)
+            {
+                logger.LogInfo("getPropertyInfo: 1 field " + field + " not found, the dev have removed it!");
+                return null;
+            }
+
+            Type myType1 = obj.GetType();
+
+            if (myType1 == null)
+            {
+                logger.LogInfo("getPropertyInfo: 2 field " + field + " not found, the dev have removed it!");
+                return null;
+            }
+
+            try
+            {
+                // Get the FieldInfo for the public static field
+                PropertyInfo fieldInfo = myType1.GetProperty(
+                    field,
+                    flags
+                );
+
+                if (fieldInfo == null)
+                {
+                    logger.LogInfo("getPropertyInfo: 3 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                return fieldInfo;
+            }
+            catch (Exception e)
+            {
+                logger.LogInfo(e.ToString());
+                return null;
+            }
+        }
+        public static object UW_getVarEnum(object obj, string field, BindingFlags flags, string enumkey)
+        {
+            try
+            {
+                FieldInfo fieldInfo = getFieldInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    return null;
+                }
+
+                Type fieldType = fieldInfo.FieldType;
+
+                // Validate that the type is actually an enum
+                if (!fieldType.IsEnum)
+                {
+                    logger.LogInfo("UW_getVarEnum: 4 Provided type is not an enum.");
+                    return null;
+                }
+
+                object enumvalue = getEnumByType(fieldType, enumkey);
+
+                if (enumvalue == null)
+                {
+                    logger.LogInfo("UW_getVarEnum: 5 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                return enumvalue;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.ToString());
+                return null;
+            }
+        }
+        public static bool UW_setVarEnumByKey(object obj, string field, BindingFlags flags, string enumkey)
+        {
+            object value = UW_getVarEnum(obj, field, flags, enumkey);
+
+            return UW_setVarEnumByValue(obj, field, flags, value);
+        }
+        public static bool UW_setVarEnumByValue(object obj, string field, BindingFlags flags, object value)
+        {
+            try
+            {
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = getFieldInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    return false;
+                }
+
+                Type fieldType = fieldInfo.FieldType;
+
+                // Validate that the type is actually an enum
+                if (!fieldType.IsEnum)
+                {
+                    logger.LogInfo("UW_setVarEnumByValue: 1 Provided type is not an enum.");
+                    return false;
+                }
+
+                fieldInfo.SetValue(obj, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.ToString());
+                return false;
+            }
+        }
+        public static bool UW_setVar(object obj, string field, BindingFlags flags, object value)
+        {
+            try
+            {
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = getFieldInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    return false;
+                }
+
+                Type fieldType = fieldInfo.FieldType;
+                // Validate that the type is actually an enum
+                if (fieldType.IsEnum)
+                {
+                    logger.LogInfo("UW_setVar: 1 please use the enum functions!");
+                }
+
+                fieldInfo.SetValue(obj, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.ToString());
+                return false;
+            }
+        }
+        public static bool UW_setProperty(object obj, string field, BindingFlags flags, object value)
+        {
+            try
+            {
+                PropertyInfo fieldInfo = getPropertyInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    logger.LogInfo("UW_setProperty: 1 field " + field + " not found, the dev have removed it!");
+                    return false;
+                }
+
+                fieldInfo.SetValue(obj, value, null);
+                return true;
+            }
+            catch (Exception e)
+            {
+                logger.LogInfo(e.ToString());
+                return false;
+            }
+        }
+        public static object UW_getVar(object obj, string field, BindingFlags flags)
+        {
+            try
+            {
+                // Get the FieldInfo for the public static field
+                FieldInfo fieldInfo = getFieldInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    return null;
+                }
+
+                Type fieldType = fieldInfo.FieldType;
+
+                object value = fieldInfo.GetValue(obj);
+
+                if (fieldType.IsEnum)
+                {
+                    logger.LogInfo("UW_getVar: 1 please use the enum functions!");
+                }
+
+                return value;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.ToString());
+                return null;
+            }
+        }
+        public static object UW_getProperty(object obj, string field, BindingFlags flags)
+        {
+            try
+            {
+                PropertyInfo fieldInfo = getPropertyInfo(obj, field, flags);
+
+                if (fieldInfo == null)
+                {
+                    logger.LogInfo("UW_getProperty: 1 field " + field + " not found, the dev have removed it!");
+                    return null;
+                }
+
+                return fieldInfo.GetValue(obj, null);
+            }
+            catch (Exception e)
+            {
+                logger.LogInfo(e.ToString());
+                return null;
+            }
+        }
+        public static FieldInfo Player_getFieldInfo(string field, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return null;
+            }
+            object obj = gameObj;
+            return getFieldInfo(obj, field, flags);
+        }
+        public static PropertyInfo Player_getPropertyInfo(string field, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return null;
+            }
+            object obj = gameObj;
+            return getPropertyInfo(obj, field, flags);
+        }
+
+        public static bool Player_setVar(string field, object value, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_setVar(obj, field, flags, value);
+        }
+        public static object Player_getVar(string field, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_getVar(obj, field, flags);
+        }
+        public static bool Player_setVarEnum(string field, string enumkey, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_setVarEnumByKey(obj, field, flags, enumkey);
+        }
+        public static object Player_getVarEnum(string field, string enumkey, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_getVarEnum(obj, field, flags, enumkey);
+        }
+        public static bool Player_setProperty(string field, object value, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_setProperty(obj, field, flags, value);
+        }
+        public static object Player_getProperty(string field, bool isPlayer = true, object personGa = null)
+        {
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+            object gameObj = isPlayer ? GetPlayerForCommand() : personGa;
+            if (gameObj == null)
+            {
+                return false;
+            }
+            object obj = gameObj;
+            return UW_getProperty(obj, field, flags);
+        }
+        public static bool getGameObjectVar(string key, bool isPlayer, object gameObject)
+        {
+            string varnotfound = $"var {key} not found, value can not be get";
+
+            FieldInfo fieldInfo = Player_getFieldInfo(key, isPlayer, gameObject);
+
+            PropertyInfo propertyInfo = Player_getPropertyInfo(key, isPlayer, gameObject);
+
+            Type fieldType = null;
+
+            if (fieldInfo != null || propertyInfo != null)
+            {
+                fieldType = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
+
+                object objValue = fieldInfo != null ? Player_getVar(key, isPlayer, gameObject) : Player_getProperty(key, isPlayer, gameObject);
+
+                if (objValue == null)
+                {
+                    logger.LogInfo(varnotfound);
+                    CommandFunction_PrintToChat(varnotfound);
+                    return false;
+                }
+
+                string value = ListToString(objValue);
+
+                logger.LogInfo(value);
+                CommandFunction_PrintToChat(value);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
+
+        public static bool setGameObjectVar(string key, string value, bool isPlayer, object gameObject)
+        {
+            FieldInfo fieldInfo = Player_getFieldInfo(key, isPlayer, gameObject);
+
+            PropertyInfo propertyInfo = Player_getPropertyInfo(key, isPlayer, gameObject);
+
+            string varnotfound = $"var {key} not found, can not be set to value {value}";
+
+            Type fieldType = null;
+
+            if (fieldInfo != null || propertyInfo != null)
+            {
+                fieldType = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
+
+                object objValue = fieldInfo != null ? Player_getVar(key, isPlayer, gameObject) : Player_getProperty(key, isPlayer, gameObject);
+
+                if (objValue == null)
+                {
+                    logger.LogInfo(varnotfound);
+                    CommandFunction_PrintToChat(varnotfound);
+                    return false;
+                }
+
+                object newvalue = null;
+                Type type = null;
+                bool isList = false;
+
+                if (isGenericList(objValue))
+                {
+                    type = GetListElementType(objValue);
+
+                    if (objValue.GetType() != fieldType)
+                    {
+                        logger.LogInfo(varnotfound);
+                        CommandFunction_PrintToChat(varnotfound);
+                        return false;
+                    }
+
+                    isList = true;
+                }
+                else
+                {
+                    type = objValue.GetType();
+
+                    if (type != fieldType)
+                    {
+                        logger.LogInfo(varnotfound);
+                        CommandFunction_PrintToChat(varnotfound);
+                        return false;
+                    }
+
+                    isList = false;
+                }
+
+                if (type == null)
+                {
+                    logger.LogInfo(varnotfound);
+                    CommandFunction_PrintToChat(varnotfound);
+                    return false;
+                }
+
+                if (type.IsEnum)
+                {
+                    newvalue = getEnumByType(type, value);
+                }
+                else if (type == typeof(double))
+                {
+                    if (double.TryParse(value, NumberStyles.Float, culture, out double newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(float))
+                {
+                    if (float.TryParse(value, NumberStyles.Float, culture, out float newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(int))
+                {
+                    if (int.TryParse(value, out int newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(bool))
+                {
+                    if (bool.TryParse(value, out bool newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(ulong))
+                {
+                    if (ulong.TryParse(value, out ulong newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(uint))
+                {
+                    if (uint.TryParse(value, out uint newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(ushort))
+                {
+                    if (ushort.TryParse(value, out ushort newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(sbyte))
+                {
+                    if (sbyte.TryParse(value, out sbyte newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(long))
+                {
+                    if (long.TryParse(value, out long newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(short))
+                {
+                    if (short.TryParse(value, out short newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(char))
+                {
+                    if (char.TryParse(value, out char newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(byte))
+                {
+                    if (byte.TryParse(value, out byte newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(decimal))
+                {
+                    if (decimal.TryParse(value, NumberStyles.Float, culture, out decimal newResult))
+                    {
+                        newvalue = newResult;
+                    }
+                }
+                else if (type == typeof(string))
+                {
+                    newvalue = value;
+                }
+
+                // If T is string or value type, just join directly
+                /*if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal))
+                {
+                    foreach (var item in (IEnumerable)realList)
+                    {
+                        values.Add(item.ToString());
+                    }
+                    ;
+                    return String.Join(separator, realList);
+                }*/
+
+                if (newvalue == null)
+                {
+                    logger.LogInfo(varnotfound);
+                    return false;
+                }
+
+                bool valueremoved = false;
+                bool valueadded = false;
+                bool valueset = false;
+
+                if (isList)
+                {
+                    MethodInfo containsMethod = fieldType.GetMethod("Contains", new[] { type });
+                    MethodInfo addMethod = fieldType.GetMethod("Add", new[] { type });
+                    MethodInfo removeMethod = fieldType.GetMethod("Remove", new[] { type });
+                    if (containsMethod == null || addMethod == null || removeMethod == null)
+                    {
+                        logger.LogInfo("error containsMethod or addMethod or removeMethod is not found!");
+                        CommandFunction_PrintToChat("error containsMethod or addMethod or removeMethod is not found!");
+                        return false;
+                    }
+                    object result = containsMethod.Invoke(objValue, new[] { newvalue });
+                    if (result is bool d1)
+                    {
+                        if (d1)
+                        {
+                            removeMethod.Invoke(objValue, new[] { newvalue });
+                            logger.LogInfo("value removed");
+                            CommandFunction_PrintToChat("value added");
+                            valueremoved = true;
+                            valueset = true;
+                        }
+                        else
+                        {
+                            addMethod.Invoke(objValue, new[] { newvalue });
+                            logger.LogInfo("value added");
+                            CommandFunction_PrintToChat("value added");
+                            valueadded = true;
+                            valueset = true;
+                        }
+                    }
+                }
+                else
+                {
+                    if (fieldInfo != null)
+                    {
+                        if (Player_setVar(key, newvalue, isPlayer, gameObject))
+                        {
+                            logger.LogInfo("value setted");
+                            CommandFunction_PrintToChat("value setted");
+                            valueset = true;
+                        }
+                    }
+                    else
+                    {
+                        if (Player_setProperty(key, newvalue, isPlayer, gameObject))
+                        {
+                            logger.LogInfo("value setted");
+                            CommandFunction_PrintToChat("value setted");
+                            valueset = true;
+                        }
+                    }
+                }
+
+                if (valueset)
+                {
+                    string message = $"{key} is set to {value}";
+                    if (valueadded)
+                    {
+                        message = $"{key} is set to {value}";
+                    }
+                    else if (valueremoved)
+                    {
+                        message = $"{key} is set to null";
+                    }
+                    logger.LogInfo(message);
+                    CommandFunction_PrintToChat(message);
+                    return true;
+                }
+                else
+                {
+                    logger.LogInfo(varnotfound);
+                    CommandFunction_PrintToChat(varnotfound);
+                }
+
+                return false;
+            }
+            return false;
+        }
+
+        public static Stats getPlayerStats()
+        {
+            Player player = GetPlayerForCommand();
+            Stats stats = (UnityEngine.Object)Player.Instance == (UnityEngine.Object)player ? player.SavedStats : player.Stats;
+            return stats;
+        }
+
+        public static void setPlayerStat(StatType statType, float value)
+        {
+            Player player = GetPlayerForCommand();
+            if ((UnityEngine.Object)Player.Instance == (UnityEngine.Object)player)
+            {
+                player.SavedStats.Set(statType, value);
+                player.Stats.Set(statType, value);
+                float result = player.SavedStats.GetStat(statType);
+                CommandFunction_PrintToChat(result.ToString("G", culture));
+                logger.LogInfo(result.ToString("G", culture));
+            }
+            else
+            {
+                player.SavedStats.Set(statType, value);
+                player.Stats.Set(statType, value);
+                float result = player.Stats.GetStat(statType);
+                CommandFunction_PrintToChat(result.ToString("G", culture));
+                logger.LogInfo(result.ToString("G", culture));
+            }
+        }
+
+        public static void printPlayerStat(StatType statType)
+        {
+            Player player = GetPlayerForCommand();
+            if ((UnityEngine.Object)Player.Instance == (UnityEngine.Object)player)
+            {
+                float result = player.SavedStats.GetStat(statType);
+                CommandFunction_PrintToChat(result.ToString("G", culture));
+                logger.LogInfo(result.ToString("G", culture));
+            }
+            else
+            {
+                float result = player.Stats.GetStat(statType);
+                CommandFunction_PrintToChat(result.ToString("G", culture));
+                logger.LogInfo(result.ToString("G", culture));
+            }
+        }
+
+        public static bool setplayervar(string key, string value)
+        {
+            if (key == "Stats" || key == "SavedStats")
+            {
+                Stats stats = getPlayerStats();
+                string playerStats = String.Join(", ", stats.stats.Keys.ToList<StatType>());
+                CommandFunction_PrintToChat(playerStats);
+                logger.LogInfo(playerStats);
+                return true;
+            }
+            else if (Enum.TryParse<StatType>(key, true, out var statType)) {
+                if (float.TryParse(value, NumberStyles.Float, culture, out float result)) {
+                    Stats stats = getPlayerStats();
+                    if (stats != null)
+                    {
+                        setPlayerStat(statType, result);
+                        CommandFunction_PrintToChat($"set {key} to {value}");
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return setGameObjectVar(key, value, true, null);
+        }
+        public static bool getplayervar(string key)
+        {
+            if (key == "Stats" || key == "SavedStats")
+            {
+                Stats stats = getPlayerStats();
+                string playerStats = String.Join(", ", stats.stats.Keys.ToList<StatType>());
+                CommandFunction_PrintToChat(playerStats);
+                logger.LogInfo(playerStats);
+                return true;
+            }
+            else if (Enum.TryParse<StatType>(key, true, out var statType))
+            {
+                printPlayerStat(statType);
+                return true;
+            }
+            return getGameObjectVar(key, true, null);
+        }
+
+        public static bool CommandFunction_SetPlayerVar(string[] command)
+        {
+            if (command == null || command.Length != 3)
+            {
+                return false;
+            }
+            return setplayervar(command[1], command[2]);
+        }
+
+        public static bool CommandFunction_GetPlayerVar(string[] command)
+        {
+            if (command == null || command.Length != 2)
+            {
+                return false;
+            }
+            return getplayervar(command[1]);
+        }
+
+        public static bool callFunc(string key, object obj)
+        {
+            bool funcCanCalled = false;
+            try
+            {
+                if (obj == null) return funcCanCalled;
+
+                // Get all public instance methods with that name
+
+                MethodInfo[] methods = obj.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                MethodInfo[] methods2 = obj.GetType().GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance);
+                MethodInfo[] methods3 = obj.GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
+                MethodInfo[] methods4 = obj.GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
+
+
+                if (methods == null) methods = new MethodInfo[0];
+                if (methods2 == null) methods2 = new MethodInfo[0];
+                if (methods3 == null) methods3 = new MethodInfo[0];
+                if (methods4 == null) methods4 = new MethodInfo[0];
+
+
+                List<MethodInfo> allMethods = new List<MethodInfo>();
+
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    allMethods.Add(methods[i]);
+                }
+
+                for (int i = 0; i < methods2.Length; i++)
+                {
+                    allMethods.Add(methods2[i]);
+                }
+
+                for (int i = 0; i < methods3.Length; i++)
+                {
+                    allMethods.Add(methods3[i]);
+                }
+
+                for (int i = 0; i < methods4.Length; i++)
+                {
+                    allMethods.Add(methods4[i]);
+                }
+
+                List<MethodInfo> list = new List<MethodInfo>();
+
+                for (int i = 0; i < allMethods.Count; i++)
+                {
+                    if (allMethods[i].Name == key)
+                    {
+                        ParameterInfo[] paramsInfos = allMethods[i].GetParameters();
+                        if (paramsInfos == null) continue;
+                        int paramsLength = paramsInfos.Length;
+                        for (int j = 0; j < paramsInfos.Length; j++)
+                        {
+                            if (paramsInfos[j].HasDefaultValue)
+                            {
+                                paramsLength--;
+                            }
+                        }
+                        if (paramsLength == 0)
+                            list.Add(allMethods[i]);
+                    }
+                }
+
+                if (list.Count == 0) return funcCanCalled;
+
+                funcCanCalled = true;
+
+                for (int i = 0; i < list.Count; i++)
+                {
+                    list[i].Invoke(obj, null);
+                }
+
+                return funcCanCalled;
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e.ToString());
+            }
+            return funcCanCalled;
+        }
+
+        public static bool callp(string key)
+        {
+            bool funcCanCalled = callFunc(key, GetPlayerForCommand());
+            string executed = funcCanCalled ? " executed" : " can not be found!";
+            string message = $"func: {key} {executed}";
+            logger.LogInfo(message);
+            CommandFunction_PrintToChat(message);
+            return funcCanCalled;
+        }
+
+        public static bool CommandFunction_CallPlayerFunc(string[] command)
+        {
+            if (command == null || command.Length != 2)
+            {
+                return false;
+            }
+            return callp(command[1]);
+        }
 
         private static void sortItemAll(KeyValuePair<string, int> item, ItemData itemData)
         {
@@ -1702,7 +2814,7 @@ namespace CommandExtension
         {
             if (allIds == null || allIds.Count < 1)
                    return false;
-            Action<ItemData> itemDataFunc = null;
+            System.Action<ItemData> itemDataFunc = null;
             Action itemFailed = () => sortItemFailed();
             foreach (var item in allIds)
             {
@@ -1790,7 +2902,7 @@ namespace CommandExtension
             if (allIds == null || allIds.Count < 1)
                return;
             
-            Action<ItemData> itemDataFunc = null;
+            System.Action<ItemData> itemDataFunc = null;
             Action itemFailed = () => sortItemFailed();
             switch (s)
             {
@@ -2077,7 +3189,7 @@ namespace CommandExtension
 				string stringItem = itemId == 0 ? mayCommandParam[1].ToLower() : "";
 				stringItemId = itemId == 0 ? (Database.GetID(stringItem)) : 0;
 				int itemAmount = ((mayCommandParam.Length >= 3 && int.TryParse(mayCommandParam[2], out itemAmount)) ? itemAmount : 1);
-                Action<ItemData> itemDataFunc = (i) => giveItemMessage(itemAmount, i);
+                System.Action<ItemData> itemDataFunc = (i) => giveItemMessage(itemAmount, i);
                 Action itemFailed = () => giveItemMessageFailed();
 
                 if (itemId > 0)
@@ -3162,7 +4274,7 @@ namespace CommandExtension
                 int rangeLength = getRangeRandomItemCount(pos);
                 Debug.Log("allIdsListSize: " + allIdsList.Count.ToString());
                 List<int> c = allIdsList.GetRange(pos, rangeLength);
-                Action<ItemData> itemDataFunc = (i) => giveItemMessage(1, i);
+                System.Action<ItemData> itemDataFunc = (i) => giveItemMessage(1, i);
                 Action itemFailed = () => giveItemMessageFailed();
 
                 foreach (int itemId in c)
@@ -3721,6 +4833,21 @@ namespace CommandExtension
         private static void fm61(string INFO_List_Skills)
         {
         }
+
+        [Command("setplayervar", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm62(string VarName_and_Value)
+        {
+        }
+
+        [Command("getplayervar", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm63(string VarName)
+        {
+        }
+
+        [Command("callp", QFSW.QC.Platform.AllPlatforms, MonoTargetType.Single)]
+        private static void fm64(string FuncName)
+        {
+        }
         #endregion
 
         #region Patches
@@ -3762,7 +4889,7 @@ namespace CommandExtension
             static void Postfix(HungryMonster __instance, DecorationPositionData decorationData)
             {
                 //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x1");
-                Action<ItemData> itemDataFunc = null;
+                System.Action<ItemData> itemDataFunc = null;
                 //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x2");
                 Action itemFailed = () => ShowItemFailed();
                 //Debug.Log((object)"CommandExteion Enable Autofill Museum all ok here x3");
@@ -4052,7 +5179,7 @@ namespace CommandExtension
             static void Prefix(Item __instance)
             {
                 int id = __instance.ID();
-                Action<ItemData> itemDataFunc = (itemData) => PrintOnHover(id, printOnHover, appendItemDescWithId, itemData);
+                System.Action<ItemData> itemDataFunc = (itemData) => PrintOnHover(id, printOnHover, appendItemDescWithId, itemData);
                 Action itemFailed = () => PrintOnFailed();
                 Database.GetData<ItemData>(id, itemDataFunc, itemFailed);
             }
