@@ -930,7 +930,7 @@ namespace CommandExtension
         };
 
         // MARRIAGE CHARACTERS
-        private static string[] marriageCharacters = new string[] { "Anne", "Catherine", "Claude", "Darius", "Donovan", "Iris", "Jun", "Kai", "Karish", "Kitty", "Liam", "Lucia", "Lucius", "Lynn", "Miyeon", "Nathaniel", "Shang", "Vaan", "Vivi", "Wesley", "Wornhardt", "Xyla", "Zaria" };
+        private static string[] marriageCharacters = new string[] { "Anne", "Catherine", "Claude", "Darius", "Donovan", "Iris", "Jun", "Kai", "Karish", "Kitty", "Liam", "Lucia", "Lucius", "Lynn", "Miyeon", "Nathaniel", "Shang", "Vaan", "Vivi", "Wesley", "Wornhardt", "Xyla", "Zaria", "Elyssia", "Thorian" };
 
         // ITEM ID's
         private static Dictionary<string, int> getAllIds()
@@ -3799,10 +3799,10 @@ namespace CommandExtension
                     }
                     if (all || npcName.ToLower() == name.ToLower())
                     {
-                        if (marriageCharacters.Contains(npcName))
-                        {
+                        //if (marriageCharacters.Contains(npcName))
+                        //{
                             npcai.MarryPlayer();
-                        }
+                        //}
                         loadSpouts();
                         bool progressBoolCharacterMarriedTo = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcName);
                         bool progressBoolCharacterMarried = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Married");
@@ -3989,10 +3989,10 @@ namespace CommandExtension
                         {
                             SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships[npcName] = 100f;
                         }
-                        if (marriageCharacters.Contains(npcai.OriginalName))
-                        {
+                        //if (marriageCharacters.Contains(npcai.OriginalName))
+                        //{
                             npcai.MarryPlayer();
-                        }
+                        //}
                         if (!all)
                         {
                             CommandFunction_PrintToChat($"You married {npcName.ColorText(Color.white)}!".ColorText(Green));

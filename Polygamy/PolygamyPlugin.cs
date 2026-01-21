@@ -1,17 +1,18 @@
 ﻿using BepInEx;
-using BepInEx.Logging;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using HarmonyLib;
+using I2.Loc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using TinyJson;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Collections.Generic;
-using System.Reflection;
-using System;
 using Wish;
-using I2.Loc;
-using System.Linq;
-using System.IO;
-using TinyJson;
+using static Wish.DLCShopMicroManager.ApiReturn.Asset;
 
 
 namespace Polygamy;
@@ -31,7 +32,7 @@ public class PolygamyPlugin : BaseUnityPlugin
     private static Vector3 lastLocation;
     private static String lastTempScene = null;
     private static Vector3 lastTempLocation;
-    private static string[] marriageCharacters = new string[] { "Anne", "Catherine", "Claude", "Darius", "Donovan", "Iris", "Jun", "Kai", "Karish", "Kitty", "Liam", "Lucia", "Lucius", "Lynn", "Miyeon", "Nathaniel", "Shang", "Vaan", "Vivi", "Wesley", "Wornhardt", "Xyla", "Zaria"};
+    private static string[] marriageCharacters = new string[] { "Anne", "Catherine", "Claude", "Darius", "Donovan", "Iris", "Jun", "Kai", "Karish", "Kitty", "Liam", "Lucia", "Lucius", "Lynn", "Miyeon", "Nathaniel", "Shang", "Vaan", "Vivi", "Wesley", "Wornhardt", "Xyla", "Zaria", "Elyssia", "Thorian"};
 
     public static void write_exception_to_console(Exception ex)
     {
@@ -215,11 +216,33 @@ public class PolygamyPlugin : BaseUnityPlugin
                 case "Zaria":
                     progressID = "Zaria Cycle 5";
                     break;
+                case "Elyssia":
+                    progressID = "Elyssia Cycle 5";
+                    break;
+                case "Thorian":
+                    progressID = "Thorian Cycle 5";
+                    break;
                 default:
                     progressID = "Anne Cycle 10";
                     break;
             }
             return SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter(progressID);
+        }
+
+        private static bool NPCAI_UnlockedEx(NPCAI npcai)
+        {
+            MethodInfo instanceMethod = typeof(NPCAI).GetMethod(
+                "CycleUnlocked",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+            if (instanceMethod == null)
+                return false;
+
+            object result1 = instanceMethod.Invoke(npcai, null);
+            if (result1 == null) return false;
+            if (result1 is bool) return (bool) result1;
+            return false;
         }
         private static bool Prefix(string __result, out bool response, NPCAI __instance, ref string ____npcName)
         {
@@ -351,6 +374,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                     case "Zaria":
                         str = ScriptLocalization.RNPC_Zaria_DeclineProposal_01;
                         break;
+                    case "Elyssia":
+                        str = ScriptLocalization.RNPC_Elyssia_DeclineProposal_01;
+                        break;
+                    case "Thorian":
+                        str = ScriptLocalization.RNPC_Thorian_DeclineProposal_01;
+                        break;
+                    default:
+                        str = "";
+                        break;
                 }
             }
             else if (SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Married"))
@@ -427,6 +459,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                     case "Zaria":
                         str = ScriptLocalization.RNPC_Zaria_DeclineProposal_02;
                         break;
+                    case "Elyssia":
+                        str = ScriptLocalization.RNPC_Elyssia_DeclineProposal_02;
+                        break;
+                    case "Thorian":
+                        str = ScriptLocalization.RNPC_Thorian_DeclineProposal_02;
+                        break;
+                    default:
+                        str = "";
+                        break;
                 }
             }
             else if (!__instance.IsDatingPlayer() || !SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter(____npcName + " Cycle 14") || !SingletonBehaviour<GameSave>.Instance.CurrentSave.characterData.Relationships.TryGetValue(____npcName, out value) || (double)value < 75.0)
@@ -502,6 +543,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                             break;
                         case "Zaria":
                             str = ScriptLocalization.RNPC_Zaria_DeclineProposal_00;
+                            break;
+                        case "Elyssia":
+                            str = ScriptLocalization.RNPC_Elyssia_DeclineProposal_00;
+                            break;
+                        case "Thorian":
+                            str = ScriptLocalization.RNPC_Thorian_DeclineProposal_00;
+                            break;
+                        default:
+                            str = "";
                             break;
                     }
             }
@@ -622,7 +672,16 @@ public class PolygamyPlugin : BaseUnityPlugin
                     Player.Instance.QuestList.StartQuest("ZariaMarriageQuest");
                     __result = ScriptLocalization.RNPC_Zaria_AcceptProposal;
                     break;
+                case "Elyssia":
+                    Player.Instance.QuestList.StartQuest("ElyssiaMarriageQuest");
+                    __result = ScriptLocalization.RNPC_Elyssia_AcceptProposal;
+                    break;
+                case "Thorian":
+                    Player.Instance.QuestList.StartQuest("ThorianMarriageQuest");
+                    __result = ScriptLocalization.RNPC_Thorian_AcceptProposal;
+                    break;
                 default:
+                    Player.Instance.QuestList.StartQuest(__instance.OriginalName+"MarriageQuest");
                     __result = ScriptLocalization.RNPC_Generic_AcceptProposal;
                     break;
             }
@@ -733,6 +792,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                     case "Lucius":
                         text = "";
                         break;
+                    case "Elyssia":
+                        text = "";
+                        break;
+                    case "Thorian":
+                        text = "";
+                        break;
+                    default:
+                        text = "";
+                        break;
                 }
             }
             else if
@@ -807,6 +875,15 @@ public class PolygamyPlugin : BaseUnityPlugin
                         text = "";
                         break;
                     case "Lucius":
+                        text = "";
+                        break;
+                    case "Elyssia":
+                        text = "";
+                        break;
+                    case "Thorian":
+                        text = "";
+                        break;
+                    default:
                         text = "";
                         break;
                 }
@@ -887,6 +964,7 @@ public class PolygamyPlugin : BaseUnityPlugin
                     Player.Instance.QuestList.StartQuest("LuciusMarriageQuest");
                     return "Oh! Heh, I really shouldn't be surprised. Actually, what's really surprising is... I don't think it's a bad idea. Sure, let's do it, XX![]We should do it at 4pm tomorrow at the event center! I'll take care of everything else, you just show up!";
                 default:
+                    Player.Instance.QuestList.StartQuest(____npcName + "MarriageQuest");
                     return "Oh! Heh, I really shouldn't be surprised. Actually, what's really surprising is... I don't think it's a bad idea. Sure, let's do it, XX![]We should do it at 4pm tomorrow at the event center! I'll take care of everything else, you just show up!";
             }
         }
@@ -1067,6 +1145,13 @@ public class PolygamyPlugin : BaseUnityPlugin
             response = true;
             str = "A vow renewal? That's a great idea! I'll take care of everything, you just show up, my dear!";
             break;
+          default:
+            SingletonBehaviour<GameSave>.Instance.SetProgressBoolCharacter("EngagedToRNPC", true);
+            Player.Instance.QuestList.StartQuest(__instance.OriginalName + "MarriageQuest", false);
+            Player.Instance.Inventory.RemoveItem(6107, 1, 0);
+            response = true;
+            str = "A vow renewal? That's a great idea! I'll take care of everything, you just show up, my dear!";
+           break;
         }
         if (flag)
           return str + "[]<i>(There might be an error message here, just ignore that. You should have started the Marriage Quest again)</i>";
@@ -1140,6 +1225,9 @@ public class PolygamyPlugin : BaseUnityPlugin
               str = "";
               break;
             case "Xyla":
+              str = "";
+              break;
+            default:
               str = "";
               break;
           }
@@ -1223,6 +1311,7 @@ public class PolygamyPlugin : BaseUnityPlugin
           Player.Instance.QuestList.StartQuest("ZariaMarriageQuest", false);
           return "This isn't happening. Literally, I'm going crazy. No? It's all real? Great. I don't know if saying \"yes\" is what I <i>should</i> do... But forget being worried. I'm done with it. Yes, XX. Let's do it [] I'll <i>walk</i> into your Sun Haven and take care of all the details myself. Be ready tomorrow at 4 om! Got that?";
         default:
+          Player.Instance.QuestList.StartQuest(____npcName + "MarriageQuest", false);
           return "Oh! Heh, I really shouldn't be surprised. Actually, what's really surprising is... I don't think it's a bad idea. Sure, let's do it, XX![]We should do it at 4pm tomorrow at the event center! I'll take care of everything else, you just show up!";
       }
     }
@@ -1381,10 +1470,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                 int count = 0;
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
-                    if (!marriageCharacters.Contains(npcai.OriginalName))
-                    {
-                        continue;
-                    }
+                    //if (!marriageCharacters.Contains(npcai.OriginalName))
+                    //{
+                     //   continue;
+                    //}
                     spouses.Add(npcai.OriginalName);
                     count += 1;
                 }
@@ -1607,10 +1696,10 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
-                    if (!marriageCharacters.Contains(npcai.OriginalName))
-                    {
-                        continue;
-                    }
+                    //if (!marriageCharacters.Contains(npcai.OriginalName))
+                    //{
+                    //    continue;
+                    //}
                     Debug.Log((object)"PolygamyMod v1 111 - 6");
                     spouses.Add(npcai.OriginalName);
                     Debug.Log((object)"PolygamyMod v1 111 - 7");
@@ -1676,9 +1765,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                 {
                     if (!marriageCharacters.Contains(current_spouse))
                     {
-                        current_spouse = marriageCharacters[0];
-                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
-                        haveCurrentSpouse = true;
+                        //current_spouse = marriageCharacters[0];
+                        //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                        //haveCurrentSpouse = true;
                     } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                     {
                         if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
@@ -1690,8 +1779,8 @@ public class PolygamyPlugin : BaseUnityPlugin
                 {
                     if (!marriageCharacters.Contains(current_spouse))
                     {
-                        current_spouse = marriageCharacters[0];
-                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                        //current_spouse = marriageCharacters[0];
+                        //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
                     }
 
                     haveCurrentSpouse = true;
@@ -1894,7 +1983,7 @@ public class PolygamyPlugin : BaseUnityPlugin
                         loadSpouts();
                         if (!marriageCharacters.Contains(npcai.OriginalName))
                         {
-                            continue;
+                            //continue;
                         }
                         spouses.Add(npcai.OriginalName);
                         string npcName = npcai.OriginalName;
@@ -1958,9 +2047,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                             {
                                 if (!marriageCharacters.Contains(current_spouse))
                                 {
-                                    current_spouse = marriageCharacters[0];
-                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
-                                    haveCurrentSpouse = true;
+                                    //current_spouse = marriageCharacters[0];
+                                    //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                    //haveCurrentSpouse = true;
                                 } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                                 {
                                     if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
@@ -1973,8 +2062,8 @@ public class PolygamyPlugin : BaseUnityPlugin
                             {
                                 if (!marriageCharacters.Contains(current_spouse))
                                 {
-                                    current_spouse = marriageCharacters[0];
-                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                    //current_spouse = marriageCharacters[0];
+                                    //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
                                 }
                                 haveCurrentSpouse = true;
                             }
@@ -2140,7 +2229,7 @@ public class PolygamyPlugin : BaseUnityPlugin
                 {
                     if (!marriageCharacters.Contains(npcai.OriginalName))
                     {
-                        continue;
+                        //continue;
                     }
                     spouses.Add(npcai.OriginalName);
                     count += 1;
