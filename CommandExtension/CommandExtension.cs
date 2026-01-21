@@ -3799,10 +3799,14 @@ namespace CommandExtension
                     }
                     if (all || npcName.ToLower() == name.ToLower())
                     {
-                        //if (marriageCharacters.Contains(npcName))
+                        ///if (marriageCharacters.Contains(npcName))
                         //{
-                            npcai.MarryPlayer();
+                        //    npcai.MarryPlayer();
                         //}
+                        if (npcai.Romanceable)
+                        {
+                            npcai.MarryPlayer();
+                        }
                         loadSpouts();
                         bool progressBoolCharacterMarriedTo = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcName);
                         bool progressBoolCharacterMarried = SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("Married");
@@ -3991,8 +3995,12 @@ namespace CommandExtension
                         }
                         //if (marriageCharacters.Contains(npcai.OriginalName))
                         //{
-                            npcai.MarryPlayer();
+                        //    npcai.MarryPlayer();
                         //}
+                        if (npcai.Romanceable)
+                        {
+                            npcai.MarryPlayer();
+                        }
                         if (!all)
                         {
                             CommandFunction_PrintToChat($"You married {npcName.ColorText(Color.white)}!".ColorText(Green));

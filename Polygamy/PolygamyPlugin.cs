@@ -1472,8 +1472,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                 {
                     //if (!marriageCharacters.Contains(npcai.OriginalName))
                     //{
-                     //   continue;
+                    //   continue;
                     //}
+                    if (!npcai.Romanceable)
+                        continue;
                     spouses.Add(npcai.OriginalName);
                     count += 1;
                 }
@@ -1679,6 +1681,7 @@ public class PolygamyPlugin : BaseUnityPlugin
         public static void Prefix(NPCAI __instance, ref string ____npcName)
         {
             loadSpouts();
+            List<string> romancables = new List<string>();
             Debug.Log((object)"PolygamyMod v1 111 - 1");
             if (__instance != null && ____npcName == __instance.OriginalName)
             {
@@ -1700,6 +1703,9 @@ public class PolygamyPlugin : BaseUnityPlugin
                     //{
                     //    continue;
                     //}
+                    if (!npcai.Romanceable)
+                        continue;
+                    romancables.Add(npcai.OriginalName);
                     Debug.Log((object)"PolygamyMod v1 111 - 6");
                     spouses.Add(npcai.OriginalName);
                     Debug.Log((object)"PolygamyMod v1 111 - 7");
@@ -1763,11 +1769,11 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                 if (current_spouse.IsNullOrWhiteSpace())
                 {
-                    if (!marriageCharacters.Contains(current_spouse))
+                    if (!romancables.Contains(current_spouse))
                     {
-                        //current_spouse = marriageCharacters[0];
-                        //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
-                        //haveCurrentSpouse = true;
+                        current_spouse = romancables[0];
+                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                        haveCurrentSpouse = true;
                     } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                     {
                         if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
@@ -1777,10 +1783,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                     }
                 } else
                 {
-                    if (!marriageCharacters.Contains(current_spouse))
+                    if (!romancables.Contains(current_spouse))
                     {
-                        //current_spouse = marriageCharacters[0];
-                        //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                        current_spouse = romancables[0];
+                        SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
                     }
 
                     haveCurrentSpouse = true;
@@ -1866,6 +1872,7 @@ public class PolygamyPlugin : BaseUnityPlugin
     {
         public static bool Prefix(Bed bed, bool isMarriageBed = false, MarriageOvernightCutscene marriageOvernightCutscene = null, bool isCutsceneComplete = false)
         {
+            List<string> romancables = new List<string>();
             if (bed != null)
             {
                 PolygamyPlugin.logger.LogInfo("[PolyGamy Mod v0.0.4 UpdatedByWerri] RequestSleep: all ok!");
@@ -1981,10 +1988,11 @@ public class PolygamyPlugin : BaseUnityPlugin
                     foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                     {
                         loadSpouts();
-                        if (!marriageCharacters.Contains(npcai.OriginalName))
+                        if (!npcai.Romanceable)
                         {
-                            //continue;
+                            continue;
                         }
+                        romancables.Add(npcai.OriginalName);
                         spouses.Add(npcai.OriginalName);
                         string npcName = npcai.OriginalName;
                         if (!ultraPolyGamySpouts.ContainsKey("MarriedTo" + npcName))
@@ -2045,11 +2053,11 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                             if (current_spouse.IsNullOrWhiteSpace())
                             {
-                                if (!marriageCharacters.Contains(current_spouse))
+                                if (!romancables.Contains(current_spouse))
                                 {
-                                    //current_spouse = marriageCharacters[0];
-                                    //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
-                                    //haveCurrentSpouse = true;
+                                    current_spouse = romancables[0];
+                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                    haveCurrentSpouse = true;
                                 } else if (ultraPolyGamySpouts.ContainsKey("current_spouse"))
                                 {
                                     if (ultraPolyGamySpouts.TryGetValue("current_spouse", out current_spouse))
@@ -2060,10 +2068,10 @@ public class PolygamyPlugin : BaseUnityPlugin
                             }
                             else
                             {
-                                if (!marriageCharacters.Contains(current_spouse))
+                                if (!romancables.Contains(current_spouse))
                                 {
-                                    //current_spouse = marriageCharacters[0];
-                                    //SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
+                                    current_spouse = romancables[0];
+                                    SingletonBehaviour<GameSave>.Instance.SetProgressStringCharacter("MarriedWith", current_spouse);
                                 }
                                 haveCurrentSpouse = true;
                             }
@@ -2203,6 +2211,7 @@ public class PolygamyPlugin : BaseUnityPlugin
 
         private static bool Prefix()
         {
+            List<string> romancables = new List<string>();
             try
             {
                 if (true)
@@ -2227,10 +2236,11 @@ public class PolygamyPlugin : BaseUnityPlugin
 
                 foreach (var npcai in SingletonBehaviour<NPCManager>.Instance._npcs.Values.Where(npcai => SingletonBehaviour<GameSave>.Instance.GetProgressBoolCharacter("MarriedTo" + npcai.OriginalName)))
                 {
-                    if (!marriageCharacters.Contains(npcai.OriginalName))
+                    if (!npcai.Romanceable)
                     {
-                        //continue;
+                        continue;
                     }
+                    romancables.Add(npcai.OriginalName);
                     spouses.Add(npcai.OriginalName);
                     count += 1;
                 }
