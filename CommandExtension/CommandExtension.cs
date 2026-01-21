@@ -24,10 +24,11 @@ using UnityEngine;
 using UnityEngine.Events;
 using Wish;
 using ZeroFormatter;
-using Player = Wish.Player;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using static Rewired.Platforms.Custom.CustomPlatformUnifiedKeyboardSource.KeyPropertyMap;
+using static UnityEngine.ParticleSystem;
 using static UnityEngine.Rendering.DebugUI;
+using Player = Wish.Player;
 
 namespace CommandExtension
 {
@@ -4084,9 +4085,23 @@ namespace CommandExtension
         {
             int questIds = 0;
             CommandFunction_PrintToChat($"!---------------All quest-ids---------------!".ColorText(Green));
+            List<string> allQuests = new List<string>();
             foreach (string quest in allQuestIds)
             {
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green));
+                allQuests.Add(quest);
+                string entry = $"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green);
+                CommandFunction_PrintToChat(entry);
+                logger.LogInfo(entry);
+                questIds++;
+            }
+            foreach (QuestAsset allQuest in SingletonBehaviour<QuestManager>.Instance.AllQuests)
+            {
+                if (allQuests.Contains(allQuest.name))
+                    continue;
+
+                string entry = $"Entry {questIds.ToString()}, QuestID: {allQuest.name.ColorText(Color.white)}!".ColorText(Green);
+                CommandFunction_PrintToChat(entry);
+                logger.LogInfo(entry);
                 questIds++;
             }
             return true;
@@ -4106,11 +4121,21 @@ namespace CommandExtension
                 string keyQuestName = value.quest.questAsset.keyQuestName;
                 string questDesc = value.quest.questAsset.questDescription;
                 string keyQuestDesc = value.quest.questAsset.questDescription;
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green));
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestName: {questName.ColorText(Color.white)}!".ColorText(Green));
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, KeyQuestName: {keyQuestName.ColorText(Color.white)}!".ColorText(Green));
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, QuestDescription: {questDesc.ColorText(Color.white)}!".ColorText(Green));
-                CommandFunction_PrintToChat($"Entry {questIds.ToString()}, KeyQuestDescription: {keyQuestDesc.ColorText(Color.white)}!".ColorText(Green));
+                string entry1 = $"Entry {questIds.ToString()}, QuestID: {quest.ColorText(Color.white)}!".ColorText(Green);
+                string entry2 = $"Entry {questIds.ToString()}, QuestName: {questName.ColorText(Color.white)}!".ColorText(Green);
+                string entry3 = $"Entry {questIds.ToString()}, KeyQuestName: {keyQuestName.ColorText(Color.white)}!".ColorText(Green);
+                string entry4 = $"Entry {questIds.ToString()}, QuestDescription: {questDesc.ColorText(Color.white)}!".ColorText(Green);
+                string entry5 = $"Entry {questIds.ToString()}, KeyQuestDescription: {keyQuestDesc.ColorText(Color.white)}!".ColorText(Green);
+                CommandFunction_PrintToChat(entry1);
+                CommandFunction_PrintToChat(entry2);
+                CommandFunction_PrintToChat(entry3);
+                CommandFunction_PrintToChat(entry4);
+                CommandFunction_PrintToChat(entry5);
+                logger.LogInfo(entry1);
+                logger.LogInfo(entry2);
+                logger.LogInfo(entry3);
+                logger.LogInfo(entry4);
+                logger.LogInfo(entry5);
                 questIds++;
             }
             return true;
