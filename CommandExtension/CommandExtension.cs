@@ -3330,7 +3330,7 @@ namespace CommandExtension
             GetPlayerForCommand().SkipSleep();
             CommandFunction_PrintToChat($"{"Slept".ColorText(Green)} once! Another Day is a Good Day!".ColorText(Yellow));
             SingletonBehaviour<GameSave>.Instance.SaveGame();
-            SingletonBehaviour<GameSave>.Instance.WriteCharacterToFile(false);
+            SingletonBehaviour<GameSave>.Instance.WriteCharacterBackupToFile();
             CommandFunction_PrintToChat($"Game backup saved to: {CommandExtension.lastBackupSavePath.ColorText(Color.white)}!".ColorText(Green));
             return true;
         }
@@ -5637,7 +5637,13 @@ namespace CommandExtension
                 Directory.CreateDirectory(text);
                 Directory.CreateDirectory(text2);
                 string text3 = ((data.characterData.characterIndex == 0) ? "" : data.characterData.characterIndex.ToString());
+                bool originalBackup = backup;
+                backup = false;
                 string path = (backup ? (text2 + SanitizeFileName(data.characterData.characterName) + text3 + ".save") : (text + SanitizeFileName(data.characterData.characterName) + text3 + ".save"));
+                backup = true;
+                string pathBackup = (backup ? (text2 + SanitizeFileName(data.characterData.characterName) + text3 + ".save") : (text + SanitizeFileName(data.characterData.characterName) + text3 + ".save"));
+                backup = originalBackup;
+
                 if (newCharacter)
                 {
                     Debug.Log("New character");
@@ -5653,7 +5659,8 @@ namespace CommandExtension
                     data.characterData.characterIndex = (byte)num;
                     path = text4;
                 }
-                CommandExtension.lastBackupSavePath = path;
+                CommandExtension.lastSavePath = path;
+                CommandExtension.lastBackupSavePath = pathBackup;
             }
         }
         #endregion
